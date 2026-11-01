@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlaybackError } from '../types';
 import { PREMIUM_REQUIRED, type SdkPlayer, type SpotifyApiLike, SpotifyMusicSource } from './source';
 
@@ -44,7 +44,24 @@ function fakeApi(failPlay = false) {
   return { api, calls };
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('SpotifyMusicSource', () => {
+  it('gives up on a player that never becomes ready', async () => {
+    vi.useFakeTimers();
+    const p = fakePlayer();
+    const src = new SpotifyMusicSource(fakeApi().api, async () => p.player, 10_000);
+    const errors: PlaybackError[] = [];
+    src.onError((e) => errors.push(e));
+    await src.connect();
+    const playing = src.play('t1');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await playing;
+    expect(errors).toEqual([{ trackId: 't1', message: 'Spotify player is not responding' }]);
+  });
+
   it('waits for the device before playing', async () => {
     const p = fakePlayer();
     const { api, calls } = fakeApi();

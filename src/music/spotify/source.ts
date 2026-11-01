@@ -30,6 +30,7 @@ export class SpotifyMusicSource implements MusicSource {
   constructor(
     private readonly api: SpotifyApiLike,
     private readonly createPlayer: () => Promise<SdkPlayer>,
+    private readonly readyTimeoutMs = 10_000,
   ) {}
 
   async connect(): Promise<void> {
@@ -71,6 +72,22 @@ export class SpotifyMusicSource implements MusicSource {
     return new Promise((resolve, reject) => this.waiters.push({ resolve, reject }));
   }
 
+  private readyWithin(ms: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Spotify player is not responding')), ms);
+      this.ready().then(
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        (e) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      );
+    });
+  }
+
   listPlaylists(): Promise<PlaylistSummary[]> {
     return this.api.listPlaylists();
   }
@@ -82,7 +99,7 @@ export class SpotifyMusicSource implements MusicSource {
   async play(trackId: string): Promise<void> {
     this.current = trackId;
     try {
-      await this.ready();
+      await this.readyWithin(this.readyTimeoutMs);
       if (this.current !== trackId || !this.deviceId) return;
       await this.api.play(this.deviceId, trackId);
     } catch (e) {

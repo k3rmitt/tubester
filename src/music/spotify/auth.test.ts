@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { scriptedFetch } from '../../util/http';
 import { memoryStorage } from '../../util/storage';
-import { NotLoggedInError, PKCE_KEY, SpotifyAuth, TOKENS_KEY } from './auth';
+import { NotLoggedInError, PKCE_KEY, SESSION_EXPIRED, SpotifyAuth, TOKENS_KEY } from './auth';
 import { challengeFor } from './pkce';
 
 const REDIRECT = 'https://k3rmitt.github.io/tubester/';
@@ -96,7 +96,8 @@ describe('SpotifyAuth tokens', () => {
     await expect(down.auth.forceRefresh()).rejects.toThrow('503');
     expect(down.auth.isLoggedIn()).toBe(true);
     const revoked = await loggedIn([{ status: 400, body: { error: 'invalid_grant' } }]);
-    await expect(revoked.auth.forceRefresh()).rejects.toThrow('400');
+    await expect(revoked.auth.forceRefresh()).rejects.toThrow(SESSION_EXPIRED);
+    await expect(revoked.auth.accessToken()).rejects.toBeInstanceOf(NotLoggedInError);
     expect(revoked.auth.isLoggedIn()).toBe(false);
   });
 });

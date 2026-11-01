@@ -166,6 +166,11 @@ export function HostApp() {
           Enable sound
         </button>
       )}
+      {mode === 'spotify' && spotify.available && !spotify.loggedIn && !!snap?.view && (
+        <button type="button" className="banner" onClick={spotify.login}>
+          Spotify session ended · Log in to Spotify again
+        </button>
+      )}
       {needsBroadcast && (
         <button type="button" className="banner" onClick={() => void startBroadcast()}>
           Broadcast stopped · Resume broadcast

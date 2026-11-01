@@ -4,6 +4,7 @@ import { authorizeUrl, challengeFor, randomString } from './pkce';
 
 export const TOKENS_KEY = 'tubester.spotify.tokens';
 export const PKCE_KEY = 'tubester.spotify.pkce';
+export const SESSION_EXPIRED = 'Your Spotify session expired. Log in again.';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const EARLY_REFRESH_MS = 60_000;
 
@@ -14,8 +15,8 @@ export interface Tokens {
 }
 
 export class NotLoggedInError extends Error {
-  constructor() {
-    super('Not logged in to Spotify');
+  constructor(message = 'Not logged in to Spotify') {
+    super(message);
   }
 }
 
@@ -98,7 +99,10 @@ export class SpotifyAuth {
     try {
       body = await this.post({ grant_type: 'refresh_token', refresh_token: t.refreshToken, client_id: this.deps.clientId });
     } catch (e) {
-      if (e instanceof HttpError && (e.status === 400 || e.status === 401)) this.logout();
+      if (e instanceof HttpError && (e.status === 400 || e.status === 401)) {
+        this.logout();
+        throw new NotLoggedInError(SESSION_EXPIRED);
+      }
       throw e;
     }
     const next = this.parse(body, t.refreshToken);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type ReviewRow, toReviewRows } from '../host/review';
 import { SpotifyApi } from '../music/spotify/api';
-import { SpotifyAuth } from '../music/spotify/auth';
+import { NotLoggedInError, SESSION_EXPIRED, SpotifyAuth } from '../music/spotify/auth';
 import { createSpotifyPlayer } from '../music/spotify/sdk';
 import { SpotifyMusicSource } from '../music/spotify/source';
 import type { PlaylistSummary } from '../music/types';
@@ -57,6 +57,15 @@ export function useSpotify(): SpotifyState {
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Any error; a revoked session also flips the UI back to "logged out". */
+  const fail = useCallback((e: unknown) => {
+    if (e instanceof NotLoggedInError) {
+      setLoggedIn(false);
+      setPlaylists(null);
+    }
+    setError(messageOf(e));
+  }, []);
+
   const source = useMemo(
     () => (deps && loggedIn ? new SpotifyMusicSource(deps.api, () => createSpotifyPlayer(deps.auth)) : null),
     [deps, loggedIn],
@@ -70,26 +79,26 @@ export function useSpotify(): SpotifyState {
         (handled) => {
           if (handled) setLoggedIn(true);
         },
-        (e) => setError(messageOf(e)),
+        fail,
       )
       .finally(() => window.history.replaceState(null, '', `${window.location.pathname}#/host`));
-  }, [deps]);
+  }, [deps, fail]);
 
   useEffect(() => {
     if (!deps || !loggedIn) return;
-    deps.api.listPlaylists().then(setPlaylists, (e) => setError(messageOf(e)));
-  }, [deps, loggedIn]);
+    deps.api.listPlaylists().then(setPlaylists, fail);
+  }, [deps, loggedIn, fail]);
 
   useEffect(() => {
     if (!source) return;
     setPlayerReady(false);
-    source.connect().catch((e) => setError(messageOf(e)));
-    source.ready().then(
-      () => setPlayerReady(true),
-      (e) => setError(messageOf(e)),
-    );
+    source.onError(() => {
+      if (deps && !deps.auth.isLoggedIn()) fail(new NotLoggedInError(SESSION_EXPIRED));
+    });
+    source.connect().catch(fail);
+    source.ready().then(() => setPlayerReady(true), fail);
     return () => source.dispose();
-  }, [source]);
+  }, [source, deps, fail]);
 
   const setRows = useCallback((next: ReviewRow[]) => {
     setRowsState(next);
@@ -115,18 +124,15 @@ export function useSpotify(): SpotifyState {
           }),
         )
         .then((resolved) => setRows(toReviewRows(resolved)))
-        .catch((e) => setError(messageOf(e)))
+        .catch(fail)
         .finally(() => setProgress(null));
     },
-    [deps, setRows],
+    [deps, setRows, fail],
   );
 
   const login = useCallback(() => {
-    deps?.auth.beginLogin().then(
-      (url) => window.location.assign(url),
-      (e) => setError(messageOf(e)),
-    );
-  }, [deps]);
+    deps?.auth.beginLogin().then((url) => window.location.assign(url), fail);
+  }, [deps, fail]);
 
   const logout = useCallback(() => {
     deps?.auth.logout();
