@@ -1,4 +1,5 @@
-import type { Action, GameState, Result, Settings, Team, TeamId, TrackId } from './types';
+import { isValidSlot } from './timeline';
+import type { Action, GameState, Phase, Result, Settings, Team, TeamId, TrackId } from './types';
 
 export interface TeamSetup {
   id: TeamId;
@@ -66,6 +67,16 @@ export function apply(state: GameState, action: Action): Result {
 /** Mutates the clone `s`. Returns a rejection reason, or null on success. */
 function handle(s: GameState, a: Action): string | null {
   switch (a.type) {
+    case 'place':
+      return place(s, a.teamId, a.slot);
+    case 'lockIn':
+      return lockIn(s, a.teamId, a.nameCorrect);
+    case 'skip':
+      return skip(s, a.teamId);
+    case 'trackFailed':
+      return trackFailed(s);
+    case 'passTurn':
+      return passTurn(s);
     default:
       return 'unknown action';
   }
@@ -102,4 +113,62 @@ function checkWin(s: GameState, teamId: TeamId): boolean {
   s.winnerIds = [teamId];
   s.phase = 'finished';
   return true;
+}
+
+function requirePhase(s: GameState, phase: Phase): string | null {
+  if (s.phase !== phase) return `not allowed during ${s.phase}`;
+  if (!s.turn) return 'no track playing';
+  return null;
+}
+
+function requireActive(s: GameState, teamId: TeamId, phase: Phase): string | null {
+  const err = requirePhase(s, phase);
+  if (err) return err;
+  if (s.turn!.teamId !== teamId) return 'not your turn';
+  return null;
+}
+
+function place(s: GameState, teamId: TeamId, slot: number): string | null {
+  const err = requireActive(s, teamId, 'deciding');
+  if (err) return err;
+  if (!isValidSlot(team(s, teamId).timeline, slot)) return 'invalid slot';
+  s.turn!.slot = slot;
+  return null;
+}
+
+function lockIn(s: GameState, teamId: TeamId, nameCorrect: boolean): string | null {
+  const err = requireActive(s, teamId, 'deciding');
+  if (err) return err;
+  if (s.turn!.slot === null) return 'place the card first';
+  s.turn!.nameCorrect = nameCorrect;
+  s.phase = 'stealWindow';
+  return null;
+}
+
+function skip(s: GameState, teamId: TeamId): string | null {
+  const err = requireActive(s, teamId, 'deciding');
+  if (err) return err;
+  const t = team(s, teamId);
+  if (t.tokens < 1) return 'not enough tokens';
+  t.tokens -= 1;
+  s.discard.push(s.turn!.trackId);
+  drawForCurrentTeam(s);
+  return null;
+}
+
+function trackFailed(s: GameState): string | null {
+  const err = requirePhase(s, 'deciding');
+  if (err) return err;
+  s.discard.push(s.turn!.trackId);
+  drawForCurrentTeam(s);
+  return null;
+}
+
+function passTurn(s: GameState): string | null {
+  const err = requirePhase(s, 'deciding');
+  if (err) return err;
+  s.discard.push(s.turn!.trackId);
+  s.turnIndex += 1;
+  drawForCurrentTeam(s);
+  return null;
 }
