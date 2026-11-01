@@ -50,7 +50,7 @@ test('three players play a short game to the end', async ({ browser }) => {
   await host.page.getByRole('button', { name: 'Start game' }).click();
 
   const pages = [host.page, lea, marco];
-  for (const p of pages) await expect(p.getByText('Mystery track').first()).toBeVisible({ timeout: 15_000 });
+  for (const p of pages) await expect(p.getByText('Mystery track', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => hasAudio(lea), { timeout: 20_000 }).toBe(true);
   await expect.poll(() => hasAudio(marco), { timeout: 20_000 }).toBe(true);
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
@@ -69,7 +69,7 @@ test('three players play a short game to the end', async ({ browser }) => {
     const next = host.page.getByRole('button', { name: /^(Next|New game)$/ });
     await expect(next).toBeVisible({ timeout: 15_000 });
     if ((await next.textContent()) === 'Next') {
-      await expect(lea.getByText('It was')).toBeVisible();
+      await expect(lea.getByText('It was', { exact: true })).toBeVisible();
       sawReveal = true;
       await next.click();
     }
@@ -77,14 +77,14 @@ test('three players play a short game to the end', async ({ browser }) => {
 
   for (const p of pages) await expect(p.getByText(WIN)).toBeVisible({ timeout: 15_000 });
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
-  expect(sawReveal || (await lea.getByText('It was').isVisible())).toBe(true);
+  expect(sawReveal || (await lea.getByText('It was', { exact: true }).isVisible())).toBe(true);
 });
 
 test('a guest gets the game back after the host reloads', async ({ browser }) => {
   const host = await openHost(browser);
   const lea = await joinGuest(browser, host.link, 'Léa', true);
   await host.page.getByRole('button', { name: 'Start game' }).click();
-  await expect(lea.getByText('Mystery track').first()).toBeVisible({ timeout: 15_000 });
+  await expect(lea.getByText('Mystery track', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
   const scores = await lea.locator('.scores').textContent();
 
   await host.page.reload();
