@@ -83,6 +83,10 @@ test('three players play a short game to the end', async ({ browser }) => {
 test('a guest gets the game back after the host reloads', async ({ browser }) => {
   const host = await openHost(browser);
   const lea = await joinGuest(browser, host.link, 'Léa', true);
+  const cards = host.page.getByLabel('Cards to win');
+  await cards.fill('');
+  await cards.press('Tab');
+  await expect(host.page.getByLabel('Cards to win')).toHaveValue('10');
   await host.page.getByRole('button', { name: 'Start game' }).click();
   await expect(lea.getByText('Mystery track', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
   const scores = await lea.locator('.scores').textContent();

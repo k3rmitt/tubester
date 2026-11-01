@@ -1,4 +1,11 @@
 import type { GameView, TeamView } from '../host/view';
+import type { GuestStatus } from '../net/transport';
+
+export function connectionHeadline(status: GuestStatus, joined: boolean, error: string | null): string {
+  if (status === 'closed') return 'Connection lost';
+  if (error && !joined) return "Couldn't join";
+  return status === 'open' && joined ? "You're in!" : 'Connecting…';
+}
 
 export function slotLabel(cards: { year: number }[], slot: number): string {
   if (cards.length === 0) return 'Anywhere';

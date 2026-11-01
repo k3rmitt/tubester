@@ -93,6 +93,22 @@ describe('HostSession lobby', () => {
     expect(session.snapshot().lobby.players[1].connected).toBe(true);
   });
 
+  it('binds one connection to one player', () => {
+    const { session, hub } = setup();
+    const g = hub.connect();
+    g.send({ t: 'hello', playerId: 'p1', secret: 's1', name: 'Léa' });
+    g.send({ t: 'hello', playerId: 'p2', secret: 's2', name: 'Ghost' });
+    expect(g.last()).toEqual({ t: 'rejected', reason: 'one player per connection' });
+    expect(session.snapshot().lobby.players.map((p) => p.name)).toEqual(['Hervé', 'Léa']);
+  });
+
+  it('tells a replaced tab it was opened elsewhere', () => {
+    const { join } = setup();
+    const oldTab = join('p1', 'Léa');
+    join('p1', 'Léa');
+    expect(oldTab.received).toContainEqual({ t: 'rejected', reason: 'opened in another tab' });
+  });
+
   it('refuses a ninth player', () => {
     const { join } = setup();
     for (let i = 1; i <= 7; i++) join(`p${i}`, `P${i}`);

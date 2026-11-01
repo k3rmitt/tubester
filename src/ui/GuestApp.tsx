@@ -6,7 +6,7 @@ import { createGuestTransport } from '../net/peer';
 import { Disc, Scores, TokenChip, Wordmark } from './components';
 import { NAME_KEY } from './keys';
 import { PlayPanel } from './PlayPanel';
-import { teamById } from './text';
+import { connectionHeadline, teamById } from './text';
 
 export function GuestApp({ code }: { code: string }) {
   const [name, setName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
@@ -117,7 +117,8 @@ function GuestLobby({ snap }: { snap: GuestSnapshot }) {
       <header className="topbar">
         <Wordmark />
       </header>
-      <p className="headline">{snap.status === 'open' && snap.lobby ? "You're in!" : 'Connecting…'}</p>
+      <p className="headline">{connectionHeadline(snap.status, snap.lobby !== null, snap.error)}</p>
+      {snap.status === 'closed' && <ReconnectButton />}
       {snap.error && (
         <p className="error" role="alert">
           {snap.error}
@@ -153,13 +154,30 @@ function GuestGame({ snap, act }: { snap: GuestSnapshot; act: (i: GuestIntent) =
         <Wordmark />
         {me && <TokenChip count={me.tokens} />}
       </header>
-      {snap.status !== 'open' && (
+      {snap.status === 'connecting' && (
         <p className="error" role="status">
           Reconnecting…
         </p>
       )}
+      {snap.status === 'closed' && (
+        <>
+          <p className="error" role="alert">
+            Connection lost
+          </p>
+          <ReconnectButton />
+        </>
+      )}
       <Scores view={view} />
       <PlayPanel view={view} audio={snap.audio} stealWindowMs={snap.stealWindowMs} error={snap.error} act={act} />
     </>
+  );
+}
+
+/** After giving up, a fresh page load reconnects with the same identity and name. */
+function ReconnectButton() {
+  return (
+    <button type="button" className="btn primary" onClick={() => window.location.reload()}>
+      Reconnect
+    </button>
   );
 }

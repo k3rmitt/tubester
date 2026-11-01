@@ -128,7 +128,11 @@ function NumberSetting({ label, value, onCommit }: { label: string; value: numbe
         type="number"
         inputMode="numeric"
         defaultValue={value}
-        onBlur={(e) => onCommit(e.target.value === '' ? Number.NaN : Number(e.target.value))}
+        onBlur={(e) => {
+          onCommit(e.target.value === '' ? Number.NaN : Number(e.target.value));
+          // If the value was rejected or clamped back to the same number, `key` won't remount: show it again.
+          e.target.value = String(value);
+        }}
       />
     </label>
   );

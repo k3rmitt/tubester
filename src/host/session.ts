@@ -187,12 +187,18 @@ export class HostSession {
   }
 
   private onHello(connId: string, playerId: string, secret: string, name: string): string | null {
+    const bound = this.conns.get(connId);
+    if (bound !== undefined && bound !== playerId) return 'one player per connection';
     const known = this.secrets[playerId];
     if (playerId === this.deps.host.id || (known !== undefined && known !== secret)) return 'invalid player';
     const res = joinLobby(this.lobby, { id: playerId, name });
     if (!res.ok) return res.reason;
     this.secrets[playerId] = secret;
-    for (const [c, p] of this.conns) if (p === playerId) this.conns.delete(c);
+    for (const [c, p] of this.conns) {
+      if (p !== playerId || c === connId) continue;
+      this.send(c, { t: 'rejected', reason: 'opened in another tab' });
+      this.conns.delete(c);
+    }
     this.conns.set(connId, playerId);
     this.lobby = res.lobby;
     this.persist();

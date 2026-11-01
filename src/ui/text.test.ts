@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, run, teamOf } from '../engine/testkit';
 import type { GameState } from '../engine/types';
 import { toView } from '../host/view';
-import { revealHeadline, slotLabel, winnersHeadline } from './text';
+import { connectionHeadline, revealHeadline, slotLabel, winnersHeadline } from './text';
 
 const reveal = (g: GameState, viewer: string | null) => toView(g, {}, viewer);
 const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot: number }[] = []) =>
@@ -50,5 +50,18 @@ describe('winnersHeadline', () => {
     expect(winnersHeadline(reveal(g, 'B'))).toBe('You win!');
     expect(winnersHeadline(reveal(g, 'A'))).toBe('Cassette wins!');
     expect(winnersHeadline(reveal(newGame(), 'A'))).toBe('');
+  });
+});
+
+describe('connectionHeadline', () => {
+  it.each([
+    ['connecting', false, null, 'Connecting…'],
+    ['open', false, null, 'Connecting…'],
+    ['open', true, null, "You're in!"],
+    ['open', false, 'game in progress', "Couldn't join"],
+    ['closed', true, null, 'Connection lost'],
+    ['closed', false, 'room full', 'Connection lost'],
+  ] as const)('%s, joined=%s, error=%s → %s', (status, joined, error, headline) => {
+    expect(connectionHeadline(status, joined, error)).toBe(headline);
   });
 });
