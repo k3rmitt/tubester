@@ -233,6 +233,8 @@ function nextTurn(s: GameState): string | null {
 
 function buy(s: GameState, teamId: TeamId): string | null {
   if (s.phase !== 'deciding' && s.phase !== 'stealWindow') return 'cannot buy now';
+  // The active team's stored slot indices would shift if its timeline changed mid-turn.
+  if (s.turn?.teamId === teamId) return 'cannot buy during your own turn';
   const t = team(s, teamId);
   if (t.tokens < s.settings.buyCost) return 'not enough tokens';
   const trackId = s.deck.shift();

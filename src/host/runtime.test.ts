@@ -141,3 +141,39 @@ describe('HostRuntime', () => {
     expect(() => HostRuntime.restore('{"nope":1}', fakeDeps().deps)).toThrow('invalid saved game');
   });
 });
+
+describe('HostRuntime hardening', () => {
+  it.each([
+    ['null', null],
+    ['empty object', {}],
+    ['host-only action', { type: 'trackFailed' }],
+    ['string slot', { type: 'place', slot: '1' }],
+    ['non-string guess', { type: 'lockIn', guess: { title: 5, artist: 'x' } }],
+    ['null guess', { type: 'lockIn', guess: null }],
+    ['oversized guess', { type: 'lockIn', guess: { title: 'a'.repeat(1000), artist: 'x' } }],
+  ])('rejects a malformed intent (%s) without throwing', (_label, intent) => {
+    const { deps, changes } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    expect(rt.handleIntent('p2', intent as never)).toEqual({ ok: false, reason: 'malformed intent' });
+    expect(changes).toHaveLength(1);
+  });
+
+  it('ignores extra fields on a valid intent', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.handleIntent('p2', { type: 'place', slot: 1, teamId: 'A' } as never)).toEqual({ ok: true });
+    expect(rt.state.turn?.teamId).toBe('B');
+  });
+
+  it('does nothing after dispose', () => {
+    const { deps, pending, changes } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.dispose();
+    expect(rt.handleIntent('p2', { type: 'lockIn' })).toEqual({ ok: false, reason: 'disposed' });
+    expect(rt.command({ type: 'passTurn' })).toEqual({ ok: false, reason: 'disposed' });
+    expect(pending()).toEqual([]);
+    expect(changes).toHaveLength(1);
+  });
+});

@@ -60,3 +60,12 @@ describe('buy', () => {
     expect(g.winnerIds).toEqual(['A']);
   });
 });
+
+describe('buy by the active team', () => {
+  it('is rejected during its own turn so stored slots cannot shift', () => {
+    const g = newGame({ startingTokens: 3 });
+    expect(apply(g, { type: 'buy', teamId: 'B' })).toEqual({ ok: false, reason: 'cannot buy during your own turn' });
+    const locked = run(g, { type: 'place', teamId: 'B', slot: 1 }, { type: 'lockIn', teamId: 'B', nameCorrect: false });
+    expect(apply(locked, { type: 'buy', teamId: 'B' })).toEqual({ ok: false, reason: 'cannot buy during your own turn' });
+  });
+});

@@ -23,6 +23,33 @@ export interface RuntimeDeps {
   onChange: (state: GameState) => void;
 }
 
+const MAX_GUESS_LENGTH = 200;
+
+/** Guests are remote and untrusted: rebuild the intent from known fields only. */
+function parseIntent(raw: unknown): GuestIntent | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  switch (r.type) {
+    case 'place':
+    case 'steal':
+      return typeof r.slot === 'number' ? { type: r.type, slot: r.slot } : null;
+    case 'skip':
+    case 'buy':
+      return { type: r.type };
+    case 'lockIn': {
+      if (r.guess === undefined) return { type: 'lockIn' };
+      const g = r.guess as Record<string, unknown> | null;
+      if (typeof g !== 'object' || g === null) return null;
+      const { title, artist } = g;
+      if (typeof title !== 'string' || typeof artist !== 'string') return null;
+      if (title.length > MAX_GUESS_LENGTH || artist.length > MAX_GUESS_LENGTH) return null;
+      return { type: 'lockIn', guess: { title, artist } };
+    }
+    default:
+      return null;
+  }
+}
+
 interface Saved {
   v: 1;
   state: GameState;
@@ -31,6 +58,7 @@ interface Saved {
 
 export class HostRuntime {
   private cancelTimer: (() => void) | null = null;
+  private disposed = false;
 
   constructor(
     private current: GameState,
@@ -49,9 +77,11 @@ export class HostRuntime {
     return toView(this.current, this.deps.meta, teamId);
   }
 
-  handleIntent(playerId: string, intent: GuestIntent): IntentResult {
+  handleIntent(playerId: string, raw: unknown): IntentResult {
     const teamId = this.players[playerId];
     if (teamId === undefined) return { ok: false, reason: 'unknown player' };
+    const intent = parseIntent(raw);
+    if (!intent) return { ok: false, reason: 'malformed intent' };
     return this.dispatch(this.toAction(teamId, intent));
   }
 
@@ -71,6 +101,7 @@ export class HostRuntime {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.clearTimer();
   }
 
@@ -97,6 +128,7 @@ export class HostRuntime {
   }
 
   private dispatch(action: Action): IntentResult {
+    if (this.disposed) return { ok: false, reason: 'disposed' };
     const before = this.current.phase;
     const result = apply(this.current, action);
     if (!result.ok) return { ok: false, reason: result.reason };
