@@ -121,7 +121,7 @@ interface GameState {
 ### Messages (data channel, JSON)
 
 Guest → host (intents, all validated by engine):
-`hello{playerId,name}`, `skip`, `place{slot}`, `guess{title,artist}`, `lockIn`, `steal{slot}`, `buy`.
+`hello{playerId,name}`, `skip`, `place{slot}`, `lockIn{guess?:{title,artist}}`, `steal{slot}`, `buy`. (The name guess travels with `lockIn`.)
 
 Host → guest:
 `state{view}` — full filtered view after every change (small; no diffing).
