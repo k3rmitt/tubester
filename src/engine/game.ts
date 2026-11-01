@@ -81,8 +81,14 @@ function handle(s: GameState, a: Action): string | null {
       return steal(s, a.teamId, a.slot);
     case 'closeSteals':
       return closeSteals(s);
-    default:
-      return 'unknown action';
+    case 'nextTurn':
+      return nextTurn(s);
+    case 'buy':
+      return buy(s, a.teamId);
+    default: {
+      const never: never = a;
+      return `unknown action ${(never as { type: string }).type}`;
+    }
   }
 }
 
@@ -215,5 +221,24 @@ function closeSteals(s: GameState): string | null {
   s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect };
   s.phase = 'reveal';
   if (cardWonBy) checkWin(s, cardWonBy);
+  return null;
+}
+
+function nextTurn(s: GameState): string | null {
+  if (s.phase !== 'reveal') return `not allowed during ${s.phase}`;
+  s.turnIndex += 1;
+  drawForCurrentTeam(s);
+  return null;
+}
+
+function buy(s: GameState, teamId: TeamId): string | null {
+  if (s.phase !== 'deciding' && s.phase !== 'stealWindow') return 'cannot buy now';
+  const t = team(s, teamId);
+  if (t.tokens < s.settings.buyCost) return 'not enough tokens';
+  const trackId = s.deck.shift();
+  if (trackId === undefined) return 'deck is empty';
+  t.tokens -= s.settings.buyCost;
+  t.timeline = insertCard(t.timeline, { trackId, year: s.years[trackId] });
+  checkWin(s, teamId);
   return null;
 }
