@@ -45,6 +45,7 @@ test('three players play a short game to the end', async ({ browser }) => {
   const lea = await joinGuest(browser, host.link, 'Léa', true);
   const marco = await joinGuest(browser, host.link, 'Marco', false);
   await expect(host.page.getByLabel('Team for Marco')).toBeVisible();
+  await expect(host.page.getByRole('radio', { name: 'Demo tones' })).toBeChecked();
   await setNumber(host.page, 'Cards to win', '2');
   await setNumber(host.page, 'Steal window (s)', '2');
   await host.page.getByRole('button', { name: 'Start game' }).click();

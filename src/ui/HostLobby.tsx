@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { canStart, MAX_PLAYERS, TEAMS } from '../host/lobby';
-import type { HostSession, HostSnapshot } from '../host/session';
-import { DEMO_TRACKS } from '../music/demo';
+import type { GameTrack, HostSession, HostSnapshot } from '../host/session';
 import { Wordmark } from './components';
 import { joinUrl } from './router';
 
@@ -10,19 +9,25 @@ export function HostLobby({
   snap,
   session,
   onClose,
+  music,
+  musicReady,
+  tracks,
 }: {
   code: string;
   snap: HostSnapshot;
   session: HostSession;
   onClose: () => void;
+  music: ReactNode;
+  musicReady: boolean;
+  tracks: GameTrack[];
 }) {
   const [error, setError] = useState<string | null>(null);
   const { lobby } = snap;
   const link = joinUrl(code);
-  const ready = canStart(lobby);
+  const teamsReady = canStart(lobby);
 
   function start() {
-    const r = session.startGame(DEMO_TRACKS);
+    const r = session.startGame(tracks);
     setError(r.ok ? null : r.reason);
   }
 
@@ -98,18 +103,18 @@ export function HostLobby({
               onCommit={(v) => session.updateSettings({ stealWindowSec: v })}
             />
           </section>
+          {music}
           <section className="panel">
-            <h2>Music</h2>
-            <p className="muted">Demo hits · {DEMO_TRACKS.length} songs, played as test tones.</p>
             {error && (
               <p className="error" role="alert">
                 {error}
               </p>
             )}
-            <button type="button" className="btn primary" disabled={!ready} onClick={start}>
+            <button type="button" className="btn primary" disabled={!teamsReady || !musicReady} onClick={start}>
               Start game
             </button>
-            {!ready && <p className="muted">Need at least 2 teams.</p>}
+            {!teamsReady && <p className="muted">Need at least 2 teams.</p>}
+            {teamsReady && !musicReady && <p className="muted">Finish the music setup first.</p>}
           </section>
         </div>
       </div>
