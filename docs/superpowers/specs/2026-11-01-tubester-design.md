@@ -90,7 +90,7 @@ Deck = shuffled reviewed tracks. Each team receives one face-up card. Team with 
    - **Place**: pick a slot on own timeline (0..n).
    - **Name it** (optional): type title + artist.
    - **Lock in**.
-3. **Steal window** (5 s) — every other team with ≥1 token may tap **TUBESTER!** then a free slot (≠ active team's slot, ≠ other stealers' slots) on the active team's timeline; −1 token each. Order = arrival order at host.
+3. **Steal window** (5 s) — every other team with ≥1 token may first select a free slot (≠ active team's slot, ≠ other stealers' slots) on the active team's timeline, then press **TUBESTER!** to confirm; −1 token each. Order = arrival order of the TUBESTER! press at host. A press whose slot was taken in the meantime is rejected (no token spent) and the player may pick another slot.
 4. **Reveal** — title, artist, resolved year shown to all.
    - A slot is correct if `left.year ≤ year ≤ right.year` (equal years valid on either side).
    - Active team correct → card joins their timeline; all stealers' tokens are lost.
@@ -158,7 +158,8 @@ Host → guest:
 - Mobile-first: single column ≥360 px; two columns (own timeline + scoreboard) ≥768 px; board view ≥1024 px. No horizontal page scroll.
 - Own timeline on mobile: vertical list oldest→newest; slots are full-width tap targets (≥44 px) labelled "between 1984 and 1991". Desktop: horizontal cards with clickable gaps. No drag-and-drop.
 - Opponents: compact chips (count + years), tap to expand; active team's timeline auto-expands during the steal window.
-- Steal: large **TUBESTER!** button pinned bottom (thumb zone) with countdown ring.
+- Steal: pick a slot, then a large **TUBESTER!** button pinned bottom (thumb zone) with countdown ring.
+- Visual reference (approved 2026-11-01): mockup canvas https://claude.ai/artifact/LmoRcUw45fgjfF7nZrs2X3 — guest Join / My turn / Steal / Reveal (390 px), host Setup & year review / Game board (desktop). Look: near-black ground `#0F1115`, surfaces `#1A1D24`, text `#F2F0EA`, muted `#9AA0AC`; yellow `#FFD23F` = you/primary, orange `#FF8A4C` = steal, blue `#5AB0FF` = others/status; Space Grotesk (display) + Inter (body); no emoji.
 - Name input: stays above the virtual keyboard; `autocorrect`/`autocapitalize` off.
 - Screen Wake Lock during game; remote `<audio playsinline>`; "Tap to re-enable sound" banner if iOS suspends audio.
 - Audio unlocked by the **Join** tap (user gesture).
