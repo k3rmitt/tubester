@@ -1,4 +1,4 @@
-import { isValidSlot } from './timeline';
+import { insertCard, isCorrectSlot, isValidSlot } from './timeline';
 import type { Action, GameState, Phase, Result, Settings, Team, TeamId, TrackId } from './types';
 
 export interface TeamSetup {
@@ -77,6 +77,10 @@ function handle(s: GameState, a: Action): string | null {
       return trackFailed(s);
     case 'passTurn':
       return passTurn(s);
+    case 'steal':
+      return steal(s, a.teamId, a.slot);
+    case 'closeSteals':
+      return closeSteals(s);
     default:
       return 'unknown action';
   }
@@ -170,5 +174,46 @@ function passTurn(s: GameState): string | null {
   s.discard.push(s.turn!.trackId);
   s.turnIndex += 1;
   drawForCurrentTeam(s);
+  return null;
+}
+
+function steal(s: GameState, teamId: TeamId, slot: number): string | null {
+  if (s.phase !== 'stealWindow' || !s.turn) return 'no steal window open';
+  const turn = s.turn;
+  if (teamId === turn.teamId) return 'cannot steal your own card';
+  const thief = team(s, teamId);
+  if (turn.steals.some((x) => x.teamId === teamId)) return 'already stole this turn';
+  if (thief.tokens < 1) return 'not enough tokens';
+  if (!isValidSlot(team(s, turn.teamId).timeline, slot)) return 'invalid slot';
+  if (slot === turn.slot || turn.steals.some((x) => x.slot === slot)) return 'slot taken';
+  thief.tokens -= 1;
+  turn.steals.push({ teamId, slot });
+  return null;
+}
+
+function closeSteals(s: GameState): string | null {
+  if (s.phase !== 'stealWindow' || !s.turn) return 'no steal window open';
+  const { trackId, teamId, slot, nameCorrect, steals } = s.turn;
+  const year = s.years[trackId];
+  const active = team(s, teamId);
+
+  const activeCorrect = isCorrectSlot(active.timeline, slot!, year);
+  let cardWonBy: TeamId | null = activeCorrect ? teamId : null;
+  if (!activeCorrect) {
+    const winner = steals.find((x) => isCorrectSlot(active.timeline, x.slot, year));
+    cardWonBy = winner ? winner.teamId : null;
+  }
+
+  if (cardWonBy) {
+    const w = team(s, cardWonBy);
+    w.timeline = insertCard(w.timeline, { trackId, year });
+  } else {
+    s.discard.push(trackId);
+  }
+  if (nameCorrect) active.tokens = Math.min(s.settings.tokenCap, active.tokens + 1);
+
+  s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect };
+  s.phase = 'reveal';
+  if (cardWonBy) checkWin(s, cardWonBy);
   return null;
 }
