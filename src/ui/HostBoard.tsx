@@ -52,6 +52,14 @@ export function HostBoard({
           )}
         </span>
       </header>
+      {snap.musicError && (
+        <div className="panel" role="alert">
+          <p className="error">Music stopped: {snap.musicError}</p>
+          <button type="button" className="btn small" onClick={() => session.retryMusic()}>
+            Try again
+          </button>
+        </div>
+      )}
       <div className="board">
         <div className="main">
           {view.turnOrder.map((id) => {

@@ -13,3 +13,11 @@ describe('parseRoute', () => {
     expect(parseRoute(hash)).toEqual(route);
   });
 });
+describe('parseRoute after the Spotify redirect', () => {
+  it('sends the login callback to the host screen', () => {
+    expect(parseRoute('', '?code=abc&state=xyz')).toEqual({ name: 'host' });
+    expect(parseRoute('', '?error=access_denied&state=xyz')).toEqual({ name: 'host' });
+    expect(parseRoute('', '?utm=1')).toEqual({ name: 'home' });
+  });
+});
+

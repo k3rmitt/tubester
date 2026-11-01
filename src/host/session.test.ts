@@ -5,7 +5,7 @@ import { type MemoryGuest, MemoryHub } from '../net/memory';
 import { seededRandom } from '../util/shuffle';
 import { type KeyValueStorage, memoryStorage } from '../util/storage';
 import { fakeTimers } from '../util/timer';
-import { COUNTDOWN_MS, HostSession, type HostSnapshot, REVEAL_MS, SAVE_KEY } from './session';
+import { COUNTDOWN_MS, HostSession, type HostSnapshot, MAX_MUSIC_FAILURES, REVEAL_MS, SAVE_KEY } from './session';
 
 const TRACKS = DEMO_TRACKS.slice(0, 10);
 const silent: ToneOutput = { start: () => undefined, stop: () => undefined };
@@ -203,6 +203,44 @@ describe('HostSession game', () => {
     timers.fire(COUNTDOWN_MS);
     expect(music.played).toHaveLength(1);
     expect(session.snapshot().view?.teams.map((t) => t.tokens)).toEqual([2, 2]);
+  });
+
+  it('stops skipping after repeated playback failures and lets the host retry', () => {
+    const { session, join, timers, music } = setup();
+    join('p1', 'Léa');
+    session.startGame(TRACKS);
+    const deckAtStart = session.snapshot().view?.deckRemaining ?? 0;
+    for (let i = 0; i < MAX_MUSIC_FAILURES; i++) {
+      music.failNext = true;
+      timers.fire(COUNTDOWN_MS);
+    }
+    expect(session.snapshot().musicError).toBe('simulated failure');
+    expect(session.snapshot().audio).toBe('stopped');
+    expect(timers.pending()).not.toContain(COUNTDOWN_MS);
+    expect(session.snapshot().view?.deckRemaining).toBe(deckAtStart - (MAX_MUSIC_FAILURES - 1));
+    session.retryMusic();
+    expect(session.snapshot().musicError).toBeNull();
+    expect(session.snapshot().audio).toBe('countdown');
+    timers.fire(COUNTDOWN_MS);
+    expect(music.played).toHaveLength(1);
+  });
+
+  it('forgets earlier failures once a turn moves on', () => {
+    const { session, join, timers, music } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS);
+    for (let i = 0; i < MAX_MUSIC_FAILURES - 1; i++) {
+      music.failNext = true;
+      timers.fire(COUNTDOWN_MS);
+    }
+    timers.fire(COUNTDOWN_MS);
+    playActiveTurn(session, { 'team-1': lea });
+    timers.fire(5000);
+    timers.fire(REVEAL_MS);
+    music.failNext = true;
+    timers.fire(COUNTDOWN_MS);
+    expect(session.snapshot().musicError).toBeNull();
+    expect(session.snapshot().audio).toBe('countdown');
   });
 
   it('restores a saved game after a host reload', () => {

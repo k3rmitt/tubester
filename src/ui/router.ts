@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 
 export type Route = { name: 'home' } | { name: 'host' } | { name: 'join'; code: string };
 
-export function parseRoute(hash: string): Route {
+export function parseRoute(hash: string, search = ''): Route {
   const join = /^#\/join\/(TUBE-[A-Z0-9]{4})$/i.exec(hash);
   if (join) return { name: 'join', code: join[1].toUpperCase() };
-  if (hash === '#/host') return { name: 'host' };
+  if (hash === '#/host' || new URLSearchParams(search).has('state')) return { name: 'host' };
   return { name: 'home' };
 }
 
 export function useRoute(): Route {
-  const [route, setRoute] = useState(() => parseRoute(window.location.hash));
+  const read = () => parseRoute(window.location.hash, window.location.search);
+  const [route, setRoute] = useState(read);
   useEffect(() => {
-    const onChange = () => setRoute(parseRoute(window.location.hash));
+    const onChange = () => setRoute(parseRoute(window.location.hash, window.location.search));
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);

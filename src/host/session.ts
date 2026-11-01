@@ -24,6 +24,8 @@ import type { GameView, TrackMeta } from './view';
 export const COUNTDOWN_MS = 3000;
 export const REVEAL_MS = 5000;
 export const SAVE_KEY = 'tubester.host';
+/** After this many failed tracks in a row the host is asked instead of skipping on. */
+export const MAX_MUSIC_FAILURES = 3;
 
 /** A track with an optional resolved year (Plan 3 fills `year` from MusicBrainz). */
 export type GameTrack = Track & { year?: number };
@@ -32,6 +34,8 @@ export interface HostSnapshot {
   lobby: Lobby;
   view: GameView | null;
   audio: AudioState;
+  /** Set when playback kept failing; the host must retry. */
+  musicError: string | null;
 }
 
 export interface HostSessionDeps {
@@ -62,17 +66,24 @@ export class HostSession {
   private audio: AudioState = 'stopped';
   private playingTrack: TrackId | null = null;
   private cancelCountdown: (() => void) | null = null;
+  private musicFailures = 0;
+  private musicError: string | null = null;
 
   constructor(private readonly deps: HostSessionDeps) {
     this.lobby = createLobby(deps.host);
     deps.transport.onMessage((connId, raw) => this.onMessage(connId, raw));
     deps.transport.onDisconnect((connId) => this.onDisconnect(connId));
-    deps.music.onError((e) => this.onMusicError(e.trackId));
+    deps.music.onError((e) => this.onMusicError(e.trackId, e.message));
     this.restore();
   }
 
   snapshot(): HostSnapshot {
-    return { lobby: this.lobby, view: this.runtime?.viewFor(this.deps.host.id) ?? null, audio: this.audio };
+    return {
+      lobby: this.lobby,
+      view: this.runtime?.viewFor(this.deps.host.id) ?? null,
+      audio: this.audio,
+      musicError: this.musicError,
+    };
   }
 
   assignTeam(playerId: string, teamId: string): void {
@@ -119,6 +130,16 @@ export class HostSession {
   command(cmd: HostCommand): IntentResult {
     if (!this.runtime) return { ok: false, reason: 'game not started' };
     return this.runtime.command(cmd);
+  }
+
+  /** After repeated playback failures: try the current track again. */
+  retryMusic(): void {
+    if (!this.runtime) return;
+    this.musicError = null;
+    this.musicFailures = 0;
+    this.playingTrack = null;
+    this.syncAudio(this.runtime.state);
+    this.broadcast();
   }
 
   /** New game in the same room with the same players. */
@@ -216,6 +237,7 @@ export class HostSession {
   }
 
   private onGameChange(state: GameState): void {
+    if (state.phase !== 'deciding') this.musicFailures = 0;
     this.syncAudio(state);
     this.persist();
     this.broadcast();
@@ -234,7 +256,7 @@ export class HostSession {
       this.cancelCountdown = null;
       if (this.playingTrack !== current) return;
       this.audio = 'playing';
-      this.deps.music.play(current).catch(() => this.onMusicError(current));
+      this.deps.music.play(current).catch((e) => this.onMusicError(current, e instanceof Error ? e.message : String(e)));
       this.broadcast();
     }, COUNTDOWN_MS);
   }
@@ -247,8 +269,15 @@ export class HostSession {
     this.deps.music.stop().catch(() => undefined);
   }
 
-  private onMusicError(trackId: TrackId): void {
+  private onMusicError(trackId: TrackId, message: string): void {
     if (!this.runtime || this.playingTrack !== trackId) return;
+    this.musicFailures += 1;
+    if (this.musicFailures >= MAX_MUSIC_FAILURES) {
+      this.musicError = message;
+      this.audio = 'stopped';
+      this.broadcast();
+      return;
+    }
     this.runtime.command({ type: 'trackFailed' });
   }
 
