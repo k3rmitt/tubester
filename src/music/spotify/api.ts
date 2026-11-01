@@ -1,0 +1,114 @@
+import { type HttpFetch, HttpError } from '../../util/http';
+import type { PlaylistSummary, Track } from '../types';
+
+const BASE = 'https://api.spotify.com/v1';
+
+export interface TokenSource {
+  accessToken(): Promise<string>;
+  forceRefresh(): Promise<string>;
+}
+
+interface Page<T> {
+  items?: T[];
+  next?: string | null;
+}
+
+interface ApiPlaylist {
+  id?: string;
+  name?: string;
+  collaborative?: boolean;
+  owner?: { id?: string };
+  items?: { total?: number };
+  tracks?: { total?: number };
+}
+
+interface ApiTrack {
+  type?: string;
+  id?: string | null;
+  name?: string;
+  is_local?: boolean;
+  artists?: { name?: string }[];
+  album?: { release_date?: string };
+  external_ids?: { isrc?: string };
+}
+
+export class SpotifyApi {
+  constructor(
+    private readonly auth: TokenSource,
+    private readonly fetchFn: HttpFetch,
+  ) {}
+
+  async me(): Promise<{ id: string }> {
+    const body = (await this.request('GET', '/me')) as { id?: string } | null;
+    if (!body?.id) throw new Error('Spotify returned no user id');
+    return { id: body.id };
+  }
+
+  /** Only playlists whose contents the API will return: owned or collaborative. */
+  async listPlaylists(): Promise<PlaylistSummary[]> {
+    const { id: me } = await this.me();
+    const out: PlaylistSummary[] = [];
+    for await (const p of this.pages<ApiPlaylist>('/me/playlists?limit=50')) {
+      if (!p.id || !p.name) continue;
+      if (p.owner?.id !== me && !p.collaborative) continue;
+      out.push({ id: p.id, name: p.name, trackCount: p.items?.total ?? p.tracks?.total ?? 0 });
+    }
+    return out;
+  }
+
+  async loadPlaylist(id: string): Promise<Track[]> {
+    const out: Track[] = [];
+    const seen = new Set<string>();
+    const path = `/playlists/${encodeURIComponent(id)}/items?limit=100&additional_types=track`;
+    for await (const entry of this.pages<{ item?: ApiTrack | null; track?: ApiTrack | null }>(path)) {
+      const t = entry.item ?? entry.track;
+      if (t?.type !== 'track' || t.is_local || !t.id || !t.name || seen.has(t.id)) continue;
+      const year = Number.parseInt((t.album?.release_date ?? '').slice(0, 4), 10);
+      if (!Number.isFinite(year) || year < 1900) continue;
+      seen.add(t.id);
+      out.push({
+        id: t.id,
+        title: t.name,
+        artists: (t.artists ?? []).map((a) => a.name ?? '').filter(Boolean),
+        isrc: t.external_ids?.isrc,
+        sourceYear: year,
+      });
+    }
+    return out;
+  }
+
+  async play(deviceId: string, trackId: string): Promise<void> {
+    await this.request('PUT', `/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+      uris: [`spotify:track:${trackId}`],
+    });
+  }
+
+  async pause(deviceId: string): Promise<void> {
+    await this.request('PUT', `/me/player/pause?device_id=${encodeURIComponent(deviceId)}`);
+  }
+
+  private async *pages<T>(first: string): AsyncGenerator<T> {
+    let next: string | null | undefined = first;
+    while (next) {
+      const page = (await this.request('GET', next)) as Page<T> | null;
+      for (const item of page?.items ?? []) yield item;
+      next = page?.next;
+    }
+  }
+
+  private async request(method: string, path: string, body?: unknown, retried = false): Promise<unknown> {
+    const token = retried ? await this.auth.forceRefresh() : await this.auth.accessToken();
+    const res = await this.fetchFn(path.startsWith('http') ? path : `${BASE}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.status === 401 && !retried) return this.request(method, path, body, true);
+    if (res.status === 204) return null;
+    if (!res.ok) {
+      const detail = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      throw new HttpError(res.status, detail?.error?.message ?? `Spotify request failed (${res.status})`);
+    }
+    return res.json().catch(() => null);
+  }
+}
