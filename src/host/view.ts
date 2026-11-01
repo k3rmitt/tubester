@@ -24,6 +24,8 @@ export interface TurnView {
   teamId: TeamId;
   slot: number | null;
   steals: Steal[];
+  /** Changes whenever a new track comes into play (new turn, skip, failed track). */
+  seq: string;
 }
 
 export interface RevealView {
@@ -65,7 +67,12 @@ export function toView(state: GameState, meta: Record<TrackId, TrackMeta>, viewe
     })),
     turnOrder: [...state.turnOrder],
     turn: state.turn
-      ? { teamId: state.turn.teamId, slot: state.turn.slot, steals: state.turn.steals.map((s) => ({ ...s })) }
+      ? {
+          teamId: state.turn.teamId,
+          slot: state.turn.slot,
+          steals: state.turn.steals.map((s) => ({ ...s })),
+          seq: `${state.turnIndex}-${state.discard.length}`,
+        }
       : null,
     reveal:
       revealing && o

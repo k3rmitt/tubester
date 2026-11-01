@@ -33,7 +33,13 @@ describe('toView', () => {
 
   it('exposes the turn without the track', () => {
     const g = run(newGame(), { type: 'place', teamId: 'B', slot: 1 });
-    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [] });
+    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [], seq: '0-0' });
+  });
+
+  it('changes the turn seq when a new track comes into play', () => {
+    const g0 = newGame();
+    const g1 = run(g0, { type: 'skip', teamId: 'B' });
+    expect(toView(g0, meta, null).turn?.seq).not.toBe(toView(g1, meta, null).turn?.seq);
   });
 
   it('reveals title, artists, year and outcome after closeSteals', () => {

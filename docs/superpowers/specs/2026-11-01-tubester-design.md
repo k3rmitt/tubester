@@ -120,11 +120,10 @@ interface GameState {
 
 ### Messages (data channel, JSON)
 
-Guest → host (intents, all validated by engine):
-`hello{playerId,name}`, `skip`, `place{slot}`, `lockIn{guess?:{title,artist}}`, `steal{slot}`, `buy`. (The name guess travels with `lockIn`.)
+Guest → host: `hello{playerId,secret,name}` then `intent{intent}` where intent is one of `skip`, `place{slot}`, `lockIn{guess?:{title,artist}}`, `steal{slot}`, `buy` (validated by the host runtime, then the engine). Player ids are public (they appear in views); the per-device `secret` (kept in the guest's localStorage) is required to reclaim a player id, so nobody can act as someone else.
 
 Host → guest:
-`state{view}` — full filtered view after every change (small; no diffing).
+`lobby{lobby}` before the game starts; `state{view,lobby,audio,stealWindowMs}` — full filtered view after every change (small; no diffing); `audio` is `countdown|playing|stopped` so screens can show the countdown.
 `rejected{reason}`.
 
 **View filtering:** before reveal, the current track's `title`, `artists`, `year` are absent from every view, including the host UI's own view. Known caveat: the host's tab holds the data in memory (devtools cheating possible; accepted among friends). Host's own taps have no network delay (slight steal-race advantage; accepted).
