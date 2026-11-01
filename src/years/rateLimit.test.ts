@@ -14,7 +14,13 @@ describe('createRateLimiter', () => {
   });
   it('keeps going after a failing call', async () => {
     let t = 0;
-    const schedule = createRateLimiter(10, async (ms) => void (t += ms), () => t);
+    const schedule = createRateLimiter(
+      10,
+      async (ms) => {
+        t += ms;
+      },
+      () => t,
+    );
     await expect(schedule(async () => Promise.reject(new Error('boom')))).rejects.toThrow('boom');
     await expect(schedule(async () => 42)).resolves.toBe(42);
   });
