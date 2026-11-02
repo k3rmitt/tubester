@@ -21,7 +21,7 @@ describe('reveal without steals', () => {
     const g = run(lockedAt(1), { type: 'closeSteals' });
     expect(g.phase).toBe('reveal');
     expect(teamOf(g, 'B').timeline.map((c) => c.year)).toEqual([1977, 1991]);
-    expect(g.lastOutcome).toEqual({ trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false });
+    expect(g.lastOutcome).toEqual({ trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false, stealNameBonus: [] });
   });
   it('discards a wrongly placed card', () => {
     const g = run(lockedAt(0), { type: 'closeSteals' });
@@ -47,7 +47,7 @@ describe('steal validation', () => {
   it('allows one steal per team per turn', () => {
     const g = run(withLongerB(), { type: 'place', teamId: 'B', slot: 0 }, { type: 'lockIn', teamId: 'B', nameCorrect: false });
     const g2 = run(g, { type: 'steal', teamId: 'C', slots: [1] });
-    expect(apply(g2, { type: 'steal', teamId: 'C', slots: [2] })).toEqual({ ok: false, reason: 'already stole this turn' });
+    expect(apply(g2, { type: 'steal', teamId: 'C', slots: [2] })).toEqual({ ok: false, reason: 'already answered this turn' });
   });
   it('needs a token', () => {
     const g = structuredClone(lockedAt(1));
@@ -154,7 +154,6 @@ describe('multi-slot steals', () => {
     expect(apply(poor, { type: 'steal', teamId: 'C', slots: [1, 2] })).toEqual({ ok: false, reason: 'not enough tokens' });
     expect(apply(wrongB(), { type: 'steal', teamId: 'C', slots: [3] })).toEqual({ ok: false, reason: 'invalid slot' });
     expect(apply(wrongB(), { type: 'steal', teamId: 'C', slots: [1, 1] })).toEqual({ ok: false, reason: 'invalid slot' });
-    expect(apply(wrongB(), { type: 'steal', teamId: 'C', slots: [] })).toEqual({ ok: false, reason: 'invalid slot' });
   });
   it('refuses at no cost when none of the slots are free', () => {
     const g = run(wrongB(), { type: 'steal', teamId: 'A', slots: [1] });
@@ -173,37 +172,47 @@ describe('multi-slot steals', () => {
       { type: 'place', teamId: 'B', slot: 0 },
       { type: 'lockIn', teamId: 'B', nameCorrect: false },
       { type: 'steal', teamId: 'C', slots: [1, 2] },
+      { type: 'steal', teamId: 'A', slots: [] },
     );
     expect(g.phase).toBe('reveal');
     expect(g.lastOutcome).toMatchObject({ cardWonBy: 'C' });
   });
 });
 
-describe('the steal window closes early', () => {
-  it('stays open while a team with tokens has not pressed', () => {
+describe('every other team answers once', () => {
+  it('stays open while a team has not answered', () => {
     const g = run(wrongB(), { type: 'steal', teamId: 'C', slots: [1] });
     expect(g.phase).toBe('stealWindow');
+    expect(g.turn?.answered).toEqual(['C']);
   });
-  it('closes when the last team able to steal presses', () => {
+  it('closes when the last team answers', () => {
     const g = run(wrongB(), { type: 'steal', teamId: 'C', slots: [1] }, { type: 'steal', teamId: 'A', slots: [2] });
     expect(g.phase).toBe('reveal');
   });
-  it('does not wait for teams without tokens', () => {
+  it('a pass answers at no cost', () => {
+    const g = run(wrongB(), { type: 'steal', teamId: 'C', slots: [] });
+    expect(g.turn?.answered).toEqual(['C']);
+    expect(g.turn?.steals).toEqual([]);
+    expect(teamOf(g, 'C').tokens).toBe(2);
+  });
+  it('waits for teams without tokens, which can name or pass', () => {
     const g0 = structuredClone(withLongerB());
     teamOf(g0, 'A').tokens = 0;
-    const g = run(g0, { type: 'place', teamId: 'B', slot: 0 }, { type: 'lockIn', teamId: 'B', nameCorrect: false }, { type: 'steal', teamId: 'C', slots: [1] });
+    const g1 = run(g0, { type: 'place', teamId: 'B', slot: 0 }, { type: 'lockIn', teamId: 'B', nameCorrect: false }, { type: 'steal', teamId: 'C', slots: [1] });
+    expect(g1.phase).toBe('stealWindow');
+    expect(apply(g1, { type: 'steal', teamId: 'A', slots: [2] })).toEqual({ ok: false, reason: 'not enough tokens' });
+    const g = run(g1, { type: 'steal', teamId: 'A', slots: [], nameCorrect: true });
     expect(g.phase).toBe('reveal');
+    expect(teamOf(g, 'A').tokens).toBe(1);
   });
-  it('closes when no free slot is left', () => {
+  it('no longer closes when no free slot is left', () => {
     const g = run(wrongB(), { type: 'steal', teamId: 'C', slots: [1, 2] });
-    expect(g.phase).toBe('reveal');
-    expect(g.lastOutcome?.cardWonBy).toBe('C');
+    expect(g.phase).toBe('stealWindow');
   });
-  it('reveals at lock-in when no other team has a token', () => {
-    const g = lockedAt(1, false, newGame({ startingTokens: 0 }));
-    expect(g.phase).toBe('reveal');
+  it('opens the window even when nobody has tokens', () => {
+    expect(lockedAt(1, false, newGame({ startingTokens: 0 })).phase).toBe('stealWindow');
   });
-  it('closes after a buy drops the last waiting team to 0 tokens', () => {
+  it('a buy does not close it', () => {
     const g0 = structuredClone(withLongerB());
     teamOf(g0, 'A').tokens = 3;
     const g = run(
@@ -213,6 +222,43 @@ describe('the steal window closes early', () => {
       { type: 'steal', teamId: 'C', slots: [1] },
       { type: 'buy', teamId: 'A' },
     );
-    expect(g.phase).toBe('reveal');
+    expect(g.phase).toBe('stealWindow');
+  });
+  it('a refused press leaves the team unanswered', () => {
+    const g = run(wrongB(), { type: 'steal', teamId: 'A', slots: [1] });
+    expect(apply(g, { type: 'steal', teamId: 'C', slots: [1], nameCorrect: true })).toEqual({ ok: false, reason: 'slot taken' });
+    expect(g.turn?.answered).toEqual(['A']);
+  });
+});
+
+describe('naming bonus for stealers', () => {
+  it('gives +1 to every stealer that named it when the active team did not', () => {
+    const g = run(wrongB(), { type: 'steal', teamId: 'C', slots: [], nameCorrect: true }, { type: 'steal', teamId: 'A', slots: [1], nameCorrect: true });
+    expect(g.lastOutcome?.stealNameBonus).toEqual(['C', 'A']);
+    expect(teamOf(g, 'C').tokens).toBe(3);
+    expect(teamOf(g, 'A').tokens).toBe(2);
+  });
+  it('gives nothing to stealers when the active team named it', () => {
+    const g = run(
+      withLongerB(),
+      { type: 'place', teamId: 'B', slot: 0 },
+      { type: 'lockIn', teamId: 'B', nameCorrect: true },
+      { type: 'steal', teamId: 'C', slots: [], nameCorrect: true },
+      { type: 'steal', teamId: 'A', slots: [] },
+    );
+    expect(g.lastOutcome?.stealNameBonus).toEqual([]);
+    expect(teamOf(g, 'C').tokens).toBe(2);
+  });
+  it('never exceeds the token cap', () => {
+    const g0 = structuredClone(withLongerB());
+    teamOf(g0, 'C').tokens = 5;
+    const g = run(
+      g0,
+      { type: 'place', teamId: 'B', slot: 0 },
+      { type: 'lockIn', teamId: 'B', nameCorrect: false },
+      { type: 'steal', teamId: 'C', slots: [], nameCorrect: true },
+      { type: 'steal', teamId: 'A', slots: [] },
+    );
+    expect(teamOf(g, 'C').tokens).toBe(5);
   });
 });

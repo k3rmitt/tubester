@@ -26,6 +26,8 @@ export interface TurnView {
   teamId: TeamId;
   slot: number | null;
   steals: Steal[];
+  /** Teams that answered the steal window (slots, a name or a pass). */
+  answered: TeamId[];
   /** Changes whenever a new track comes into play (new turn, skip, failed track). */
   seq: string;
 }
@@ -78,6 +80,7 @@ export function toView(state: GameState, meta: Record<TrackId, TrackMeta>, viewe
           teamId: state.turn.teamId,
           slot: state.turn.slot,
           steals: state.turn.steals.map((s) => ({ ...s })),
+          answered: [...state.turn.answered],
           seq: `${state.turnIndex}-${state.discard.length}`,
         }
       : null,

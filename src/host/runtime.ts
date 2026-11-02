@@ -7,7 +7,7 @@ export type GuestIntent =
   | { type: 'place'; slot: number }
   | { type: 'skip' }
   | { type: 'lockIn'; guess?: Guess }
-  | { type: 'steal'; slots: number[] }
+  | { type: 'steal'; slots: number[]; guess?: Guess }
   | { type: 'buy' }
   | { type: 'pause' }
   | { type: 'resume' };
@@ -37,11 +37,13 @@ function parseIntent(raw: unknown): GuestIntent | null {
     case 'place':
       return typeof r.slot === 'number' ? { type: 'place', slot: r.slot } : null;
     case 'steal': {
-      if (typeof r.slot === 'number') return { type: 'steal', slots: [r.slot] }; // older clients
+      const guess = parseGuess(r.guess);
+      if (guess === null) return null;
+      if (typeof r.slot === 'number') return { type: 'steal', slots: [r.slot], guess }; // older clients
       const slots = r.slots;
-      if (!Array.isArray(slots) || slots.length === 0 || slots.length > MAX_STEAL_SLOTS) return null;
+      if (!Array.isArray(slots) || slots.length > MAX_STEAL_SLOTS) return null;
       if (!slots.every((x) => typeof x === 'number')) return null;
-      return { type: 'steal', slots: [...slots] };
+      return { type: 'steal', slots: [...slots], guess };
     }
     case 'skip':
     case 'buy':
@@ -49,17 +51,23 @@ function parseIntent(raw: unknown): GuestIntent | null {
     case 'resume':
       return { type: r.type };
     case 'lockIn': {
-      if (r.guess === undefined) return { type: 'lockIn' };
-      const g = r.guess as Record<string, unknown> | null;
-      if (typeof g !== 'object' || g === null) return null;
-      const { title, artist } = g;
-      if (typeof title !== 'string' || typeof artist !== 'string') return null;
-      if (title.length > MAX_GUESS_LENGTH || artist.length > MAX_GUESS_LENGTH) return null;
-      return { type: 'lockIn', guess: { title, artist } };
+      const guess = parseGuess(r.guess);
+      if (guess === null) return null;
+      return guess ? { type: 'lockIn', guess } : { type: 'lockIn' };
     }
     default:
       return null;
   }
+}
+
+/** undefined = no guess; null = malformed. */
+function parseGuess(raw: unknown): Guess | undefined | null {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { title, artist } = raw as Record<string, unknown>;
+  if (typeof title !== 'string' || typeof artist !== 'string') return null;
+  if (title.length > MAX_GUESS_LENGTH || artist.length > MAX_GUESS_LENGTH) return null;
+  return { title, artist };
 }
 
 interface PauseState {
@@ -173,7 +181,7 @@ export class HostRuntime {
       case 'skip':
         return { type: 'skip', teamId };
       case 'steal':
-        return { type: 'steal', teamId, slots: intent.slots };
+        return { type: 'steal', teamId, slots: intent.slots, nameCorrect: this.isNameCorrect(intent.guess) };
       case 'buy':
         return { type: 'buy', teamId };
       case 'lockIn':

@@ -78,7 +78,7 @@ function handle(s: GameState, a: Action): string | null {
     case 'passTurn':
       return passTurn(s);
     case 'steal':
-      return steal(s, a.teamId, a.slots);
+      return steal(s, a.teamId, a.slots, a.nameCorrect ?? false);
     case 'closeSteals':
       return closeSteals(s);
     case 'endGame':
@@ -108,7 +108,7 @@ function drawForCurrentTeam(s: GameState): void {
     finishByLongest(s);
     return;
   }
-  s.turn = { teamId: activeTeamId(s), trackId, slot: null, nameCorrect: false, steals: [] };
+  s.turn = { teamId: activeTeamId(s), trackId, slot: null, nameCorrect: false, steals: [], answered: [], namedBy: [] };
   s.phase = 'deciding';
 }
 
@@ -186,21 +186,23 @@ function passTurn(s: GameState): string | null {
   return null;
 }
 
-/** One press per team: claims the slots that are still free, 1 token each. */
-function steal(s: GameState, teamId: TeamId, slots: number[]): string | null {
+/** Each other team answers once: slots it can still claim (1 token each), a name guess, or a pass. */
+function steal(s: GameState, teamId: TeamId, slots: number[], nameCorrect: boolean): string | null {
   if (s.phase !== 'stealWindow' || !s.turn) return 'no steal window open';
   const turn = s.turn;
   if (teamId === turn.teamId) return 'cannot steal your own card';
   const thief = team(s, teamId);
-  if (turn.steals.some((x) => x.teamId === teamId)) return 'already stole this turn';
+  if (turn.answered.includes(teamId)) return 'already answered this turn';
   const timeline = team(s, turn.teamId).timeline;
-  if (slots.length === 0 || new Set(slots).size !== slots.length) return 'invalid slot';
+  if (new Set(slots).size !== slots.length) return 'invalid slot';
   if (!slots.every((slot) => isValidSlot(timeline, slot))) return 'invalid slot';
-  if (thief.tokens < 1 || slots.length > thief.tokens) return 'not enough tokens';
+  if (slots.length > thief.tokens) return 'not enough tokens';
   const free = slots.filter((slot) => !isTaken(turn, slot));
-  if (free.length === 0) return 'slot taken';
+  if (slots.length > 0 && free.length === 0) return 'slot taken';
   thief.tokens -= free.length;
   for (const slot of free) turn.steals.push({ teamId, slot });
+  turn.answered.push(teamId);
+  if (nameCorrect) turn.namedBy.push(teamId);
   if (stealsDone(s)) closeSteals(s);
   return null;
 }
@@ -209,14 +211,11 @@ function isTaken(turn: NonNullable<GameState['turn']>, slot: number): boolean {
   return slot === turn.slot || turn.steals.some((x) => x.slot === slot);
 }
 
-/** Nobody left to wait for: every other team has pressed or has no token, or no slot is free. */
+/** Nobody left to wait for: every other team has answered. */
 function stealsDone(s: GameState): boolean {
   const turn = s.turn;
   if (s.phase !== 'stealWindow' || !turn) return false;
-  const slots = team(s, turn.teamId).timeline.length + 1;
-  const freeLeft = Array.from({ length: slots }, (_, i) => i).some((i) => !isTaken(turn, i));
-  if (!freeLeft) return true;
-  return s.teams.every((t) => t.id === turn.teamId || t.tokens < 1 || turn.steals.some((x) => x.teamId === t.id));
+  return s.teams.every((t) => t.id === turn.teamId || turn.answered.includes(t.id));
 }
 
 function closeSteals(s: GameState): string | null {
@@ -239,8 +238,13 @@ function closeSteals(s: GameState): string | null {
     s.discard.push(trackId);
   }
   if (nameCorrect) active.tokens = Math.min(s.settings.tokenCap, active.tokens + 1);
+  const stealNameBonus = nameCorrect ? [] : [...s.turn.namedBy];
+  for (const id of stealNameBonus) {
+    const t = team(s, id);
+    t.tokens = Math.min(s.settings.tokenCap, t.tokens + 1);
+  }
 
-  s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect };
+  s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect, stealNameBonus };
   s.phase = 'reveal';
   if (cardWonBy) checkWin(s, cardWonBy);
   return null;
@@ -272,6 +276,6 @@ function buy(s: GameState, teamId: TeamId): string | null {
   if (trackId === undefined) return 'deck is empty';
   t.tokens -= s.settings.buyCost;
   t.timeline = insertCard(t.timeline, { trackId, year: s.years[trackId] });
-  if (!checkWin(s, teamId) && stealsDone(s)) closeSteals(s);
+  checkWin(s, teamId);
   return null;
 }

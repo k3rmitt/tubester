@@ -16,7 +16,7 @@ describe('createGame', () => {
     const g = newGame();
     expect(g.turnOrder).toEqual(['B', 'C', 'A']);
     expect(g.phase).toBe('deciding');
-    expect(g.turn).toEqual({ teamId: 'B', trackId: 't1', slot: null, nameCorrect: false, steals: [] });
+    expect(g.turn).toEqual({ teamId: 'B', trackId: 't1', slot: null, nameCorrect: false, steals: [], answered: [], namedBy: [] });
     expect(g.deck).toEqual(['t2', 't3', 't4', 't5', 't6']);
   });
 

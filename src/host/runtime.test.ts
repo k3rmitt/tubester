@@ -80,7 +80,9 @@ describe('HostRuntime', () => {
     expect(rt.state.phase).toBe('stealWindow');
     expect(pending()).toEqual([5000]);
     expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
-    expect(rt.state.phase).toBe('reveal'); // no free slot left: the window closed early
+    expect(rt.state.phase).toBe('stealWindow');
+    expect(rt.handleIntent('p1', { type: 'steal', slots: [] })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('reveal'); // every other team answered: the window closed early
     expect(pending()).toEqual([5000]);
     fire();
     expect(rt.state.phase).toBe('deciding');
@@ -317,10 +319,10 @@ describe('HostRuntime steals', () => {
     rt.handleIntent('p2', { type: 'place', slot: 1 });
     rt.handleIntent('p2', { type: 'lockIn' });
     expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
-    expect(rt.handleIntent('p1', { type: 'steal', slot: 0 })).toEqual({ ok: false, reason: 'no steal window open' });
+    expect(rt.handleIntent('p1', { type: 'steal', slot: 0 })).toEqual({ ok: false, reason: 'slot taken' });
   });
 
-  it.each([{ slots: 'x' }, { slots: [] }, { slots: Array.from({ length: 33 }, (_, i) => i) }, { slots: [0, 'a'] }])(
+  it.each([{ slots: 'x' }, { slots: [0], guess: { title: 1 } }, { slots: Array.from({ length: 33 }, (_, i) => i) }, { slots: [0, 'a'] }])(
     'rejects malformed slots %j',
     (extra) => {
       const { deps } = fakeDeps();
@@ -338,6 +340,7 @@ describe('HostRuntime steals', () => {
     rt.handleIntent('p2', { type: 'lockIn' });
     expect(pending()).toEqual([5000]);
     rt.handleIntent('p3', { type: 'steal', slots: [0] });
+    rt.handleIntent('p1', { type: 'steal', slots: [] });
     expect(rt.state.phase).toBe('reveal');
     expect(pending()).toEqual([5000]);
     expect(rt.viewFor('p1').timerLeftMs).toBe(5000);
@@ -356,5 +359,31 @@ describe('HostRuntime endGame', () => {
     expect(rt.state.phase).toBe('finished');
     expect(pending()).toEqual([]);
     expect(JSON.stringify(rt.viewFor('p1'))).not.toContain('Smells Like Teen Spirit');
+  });
+});
+
+describe('HostRuntime steal answers', () => {
+  function stealWindow() {
+    const d = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, d.deps);
+    rt.handleIntent('p2', { type: 'place', slot: 0 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    return { rt, ...d };
+  }
+
+  it('checks a stealer name guess with the matcher and pays it at the reveal', () => {
+    const { rt } = stealWindow();
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [], guess: { title: 'smells like teen spirit', artist: 'nirvana' } })).toEqual({ ok: true });
+    expect(rt.handleIntent('p1', { type: 'steal', slots: [], guess: { title: 'nope', artist: 'nobody' } })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('reveal');
+    expect(rt.state.lastOutcome?.stealNameBonus).toEqual(['C']);
+  });
+
+  it('accepts a pass and shows who answered, never who named it', () => {
+    const { rt } = stealWindow();
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [], guess: { title: 'smells like teen spirit', artist: 'nirvana' } })).toEqual({ ok: true });
+    const view = rt.viewFor('p1');
+    expect(view.turn?.answered).toEqual(['C']);
+    expect(JSON.stringify(view)).not.toContain('namedBy');
   });
 });

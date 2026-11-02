@@ -57,7 +57,7 @@ describe('toView', () => {
 
   it('exposes the turn without the track', () => {
     const g = run(newGame(), { type: 'place', teamId: 'B', slot: 1 });
-    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [], seq: '0-0' });
+    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [], answered: [], seq: '0-0' });
   });
 
   it('changes the turn seq when a new track comes into play', () => {
@@ -78,7 +78,7 @@ describe('toView', () => {
       title: 'Secret Song Title',
       artists: ['Hidden Artist'],
       year: 1991,
-      outcome: { trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false },
+      outcome: { trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false, stealNameBonus: [] },
     });
   });
 
