@@ -226,3 +226,9 @@ table.review td.warn { color: var(--steal-text); font-weight: 600; }
 .team-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--text); }
 .team-tag.me { color: var(--me); }
 .end-tags { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+/* Dropdowns: our own arrow, inside the box */
+select.input { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa0ac' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.team-select { position: relative; display: inline-flex; align-items: center; width: 170px; max-width: 100%; color: var(--text); }
+.team-select .team-icon { position: absolute; left: 12px; pointer-events: none; }
+.team-select select.input { width: 100%; padding-left: 42px; }

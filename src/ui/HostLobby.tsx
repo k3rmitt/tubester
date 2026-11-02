@@ -54,8 +54,9 @@ export function HostLobby({
                   {p.name}
                   {p.isHost ? ' · host' : ''}
                 </span>
-                <TeamIcon teamId={p.teamId} size={22} />
-                <select
+                <span className="team-select">
+                  <TeamIcon teamId={p.teamId} size={20} />
+                  <select
                   className="input"
                   aria-label={`Team for ${p.name}`}
                   value={p.teamId}
@@ -67,6 +68,7 @@ export function HostLobby({
                     </option>
                   ))}
                 </select>
+                </span>
               </div>
             ))}
           </div>
