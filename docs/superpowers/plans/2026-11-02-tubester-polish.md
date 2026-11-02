@@ -510,3 +510,95 @@ it('New game while paused ends the pause', () => { /* reset() → no view, audio
 - [ ] **Step 3: Grep for the forbidden brand:** `git grep -i hitster -- src e2e docs/manual-test.md README.md`. Expected: no output.
 - [ ] **Step 4: Commit** with the message `docs: pause, covers, splash and end card in the spec and manual test`.
 - [ ] **Step 5: Whole-branch review** by a fresh Sonnet subagent against the spec and the Review Focus list. Fix the findings, then open the PR to `main` as `k3rmitt` (`GH_TOKEN=$(gh auth token -u k3rmitt)`).
+
+---
+
+## Addendum tasks (spec sections 7–9)
+
+Global Constraints and Review Focus above still apply. Extra Review Focus for these tasks:
+- **Early close racing the timer:** after the window closes early, the runtime must not fire the old steal timer. `dispatch` already re-arms on a phase change; Task 12 has a runtime test for it.
+- **Ending the game must not reveal the song in play:** after `endGame`, no view contains the current track. Task 13 has a test.
+
+### Task 12: Multi-slot steals and early close (engine + runtime + protocol)
+
+**Files:**
+- Modify: `src/engine/types.ts` (the steal action becomes `{ type: 'steal'; teamId; slots: number[] }`)
+- Modify: `src/engine/game.ts` (`steal`, `lockIn`, `buy`, and a new `stealsDone(s)`)
+- Modify: `src/host/runtime.ts` (the `GuestIntent` steal becomes `{ type: 'steal'; slots: number[] }`; `parseIntent` also accepts a legacy `{ slot }`)
+- Test: `src/engine/game.steal.test.ts`, `src/host/runtime.test.ts`, plus any test that sends steals (`src/ui/text.test.ts`)
+
+**Interfaces:**
+- Produces:
+  - Engine `steal` claims the free slots among `slots`, in the order given, at 1 token each.
+  - Engine rejections:
+    - `'not enough tokens'` when `slots.length` exceeds the team's tokens, or the team has 0 tokens
+    - `'invalid slot'` for a malformed slot or a duplicate
+    - `'slot taken'` when none of the slots are free
+    - `'already stole this turn'`
+  - After `lockIn`, a `steal` or a `buy` during `stealWindow`, the engine closes the window by itself when every non-active team has stolen or has 0 tokens, or when no free slot is left.
+  - `parseIntent` accepts `slots` as an array of 1–32 numbers.
+
+- [ ] **Step 1: Failing engine tests** in `game.steal.test.ts`:
+  - claims several free slots and charges one token each
+  - claims only the free ones when some are taken, and charges only for those
+  - rejects more slots than tokens, and duplicates
+  - `'slot taken'` when none are free, with no token spent
+  - closes the window when the last team able to steal presses: phase `reveal` without `closeSteals`
+  - closes when no free slot is left
+  - reveals at lock-in when no other team has a token
+  - closes after a buy drops the last waiting team to 0 tokens
+  - keeps the window open while a team with tokens hasn't pressed
+  - the first correct slot in arrival order wins, including within one team's list
+  - Update existing tests: `slot: n` becomes `slots: [n]`. Drop a now-impossible explicit `closeSteals` after the window has closed by itself. The "needs a token" case now reveals at lock-in.
+- [ ] **Step 2: Run `npx vitest run src/engine`.** Expected: the new tests FAIL.
+- [ ] **Step 3: Implement.** In `steal`, validate first, then claim the free slots. Add `stealsDone(s)` and call it after `lockIn`, after `steal`, and after a `buy` in `stealWindow`; when it returns true, run `closeSteals(s)`.
+- [ ] **Step 4: Runtime tests.**
+  - The guest intent `{ type: 'steal', slots: [0, 2] }` is accepted.
+  - A legacy `{ slot: 0 }` is accepted.
+  - `{ slots: 'x' }`, `{ slots: [] }` and a 33-item list are `'malformed intent'`.
+  - When the window closes early, the old steal timer is cancelled and a reveal timer of `revealMs` is pending.
+- [ ] **Step 5: Run `npm test && npm run typecheck`.** Expected: PASS. Commit with the message `feat(steal): several slots per steal; the window closes once everyone has pressed`.
+
+### Task 13: End the game (engine + runtime + session)
+
+**Files:** `src/engine/types.ts`, `src/engine/game.ts`, `src/host/runtime.ts`; tests in `src/engine/game.end.test.ts`, `src/host/runtime.test.ts` and `src/host/session.test.ts`.
+
+**Interfaces:**
+- Produces:
+  - Engine action `{ type: 'endGame' }`, allowed in `deciding`, `stealWindow` and `reveal`.
+    - It discards the turn's track unless the phase is `reveal`, refunds nothing, sets `lastOutcome = null`, and calls `finishByLongest`.
+    - In any other phase it returns `'nothing to end'`.
+  - `HostCommand` gains `{ type: 'endGame' }`. It is the only command allowed while paused, and it clears the pause and the timers.
+  - `HostSession.endGame(): IntentResult` calls `runtime.command({ type: 'endGame' })`. Audio ends as `'stopped'`.
+
+- [ ] **Step 1: Failing tests.**
+  - Engine: ending mid-deciding and ending in the steal window give phase `finished` with the longest timelines as winners (ties shared); the current track is in `discard`; `lastOutcome` is null.
+  - Runtime: while paused, `command({ type: 'endGame' })` returns ok; `paused` becomes null; no pending timers; no view contains the current track's title.
+  - Session: pause while playing, then `endGame()` gives audio `'stopped'`, phase `'finished'`, and guests receive a `finished` view.
+- [ ] **Step 2: Run them.** Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run `npm test && npm run typecheck`.** Expected: PASS. Commit with the message `feat(pause): the host can end the game`.
+
+### Task 14: Steal and end-game screens
+
+**Files:** `src/ui/PlayPanel.tsx` (`Steal`), `src/ui/Pause.tsx` (`PauseCover` gains an optional `onEndGame`), `src/ui/HostBoard.tsx`, `src/ui/text.ts` (+ test), `src/ui/theme.css`, `e2e/game.spec.ts`.
+
+**Interfaces:**
+- Produces:
+  - `export function stealTakenNote(selected: number, claimed: number): string | null` in `text.ts`.
+    - It returns `null` when nothing was lost, `'1 slot was already taken'` for one, and `'N slots were already taken'` for more.
+  - `PauseCover({ view, players, act, onEndGame? })`.
+
+- [ ] **Step 1: Failing test** for `stealTakenNote`. Run it and watch it FAIL. Implement it and watch it PASS.
+- [ ] **Step 2: `Steal` screen.**
+  - The selection becomes a `Set<number>`. Tapping toggles a slot. Extra taps beyond `me.tokens` are ignored.
+  - The hint reads "Pick up to N slots, then press. 1 token each." TUBESTER! sends `{ type: 'steal', slots: [...selected] }`.
+  - After the press, the team's claimed slots show as "your steal". If fewer were claimed than selected, show `stealTakenNote`.
+- [ ] **Step 3: End game on the pause screen.**
+  - `HostBoard` passes `onEndGame={() => session.endGame()}`; guests pass nothing.
+  - The cover shows a secondary **End game** button. Pressing it switches the cover to "End the game for everyone?" with **End game** (danger style) and **Cancel**.
+- [ ] **Step 4: e2e.**
+  - In the reload test (two players), after the reload check: the host clicks **Pause**, **End game**, then **End game** again to confirm.
+  - Expect the end dialog with `WIN` on both pages.
+  - Then run the first test unchanged. With 2 s windows it still passes, because early close only shortens waits.
+- [ ] **Step 5: Verify** with `npm run lint && npm run typecheck && npm test && npm run e2e`, plus a 360 px check of the steal screen with two slots selected. Commit with the message `feat(ui): pick several steal slots; end the game from the pause screen`.
