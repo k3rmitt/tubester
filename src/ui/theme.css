@@ -210,3 +210,9 @@ table.review td.warn { color: var(--steal-text); font-weight: 600; }
   93.75% { transform: rotate(686.2deg) translateY(-7.8px) scale(0.23); opacity: 1; }
   100.00% { transform: rotate(720.0deg) translateY(-0.0px) scale(0.18); opacity: 1; }
 }
+
+/* Pause */
+.pause-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.pause-cover { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 16px; text-align: center; background: rgba(15, 17, 21, 0.92); }
+.pause-cover h2 { font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
+.btn.pause-resume { flex: none; width: min(320px, 100%); min-height: 64px; font-size: 20px; }

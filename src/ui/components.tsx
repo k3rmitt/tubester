@@ -99,7 +99,7 @@ export function NowPlaying({ label, audio }: { label: string; audio: AudioState 
             <i />
           </span>
         ) : (
-          <span className="muted">{audio === 'countdown' ? 'Get ready…' : 'Stopped'}</span>
+          <span className="muted">{audio === 'countdown' ? 'Get ready…' : audio === 'paused' ? 'Paused' : 'Stopped'}</span>
         )}
       </div>
     </div>

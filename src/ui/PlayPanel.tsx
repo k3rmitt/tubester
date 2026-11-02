@@ -14,14 +14,16 @@ export interface PlayPanelProps {
   act: (intent: GuestIntent) => void;
 }
 
-/** Counts down from `totalMs` starting when the component mounts. */
-export function useCountdown(totalMs: number): number {
-  const [end] = useState(() => Date.now() + totalMs);
-  const [left, setLeft] = useState(totalMs);
+/** Counts down from `leftMs` (the host's latest figure); restarts when it changes and holds while not running. */
+export function useCountdown(leftMs: number, running: boolean): number {
+  const [left, setLeft] = useState(leftMs);
   useEffect(() => {
+    setLeft(leftMs);
+    if (!running) return;
+    const end = Date.now() + leftMs;
     const id = setInterval(() => setLeft(Math.max(0, end - Date.now())), 200);
     return () => clearInterval(id);
-  }, [end]);
+  }, [leftMs, running]);
   return left;
 }
 
@@ -115,7 +117,7 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
 
 function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
   const [picked, setPicked] = useState<number | null>(null);
-  const left = useCountdown(stealWindowMs);
+  const left = useCountdown(view.timerLeftMs ?? stealWindowMs, view.paused === null);
   const turn = view.turn;
   const active = teamById(view, turn?.teamId);
   const me = teamById(view, view.viewerTeamId);

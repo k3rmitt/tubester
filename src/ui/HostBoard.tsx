@@ -3,6 +3,7 @@ import { teamNameOf } from '../host/lobby';
 import type { GuestIntent } from '../host/runtime';
 import type { HostSession, HostSnapshot } from '../host/session';
 import { Timeline, Wordmark } from './components';
+import { PauseButton, PauseCover } from './Pause';
 import { PlayPanel } from './PlayPanel';
 import { teamById } from './text';
 
@@ -35,6 +36,7 @@ export function HostBoard({
           <span className="chip live">
             Broadcasting to {online} {online === 1 ? 'player' : 'players'}
           </span>
+          <PauseButton view={view} act={act} />
           {view.phase === 'deciding' && (
             <button type="button" className="btn small" onClick={() => session.command({ type: 'passTurn' })}>
               Pass turn
@@ -102,6 +104,7 @@ export function HostBoard({
           </section>
         </div>
       </div>
+      <PauseCover view={view} players={players} act={act} />
     </>
   );
 }

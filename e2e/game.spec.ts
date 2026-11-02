@@ -56,6 +56,11 @@ test('three players play a short game to the end', async ({ browser }) => {
   await expect.poll(() => hasAudio(marco), { timeout: 20_000 }).toBe(true);
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
 
+  await lea.getByRole('button', { name: 'Pause' }).click();
+  for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeVisible({ timeout: 15_000 });
+  await marco.getByRole('button', { name: 'Resume' }).click();
+  for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeHidden({ timeout: 15_000 });
+
   let sawReveal = false;
   for (let i = 0; i < 40; i++) {
     if (await host.page.getByText(WIN).first().isVisible()) break;
