@@ -45,6 +45,8 @@ export interface HostSessionDeps {
   setTimer: SetTimer;
   storage: KeyValueStorage;
   random?: () => number;
+  /** Clock for timer bookkeeping (defaults to Date.now). */
+  now?: () => number;
   onUpdate: (snapshot: HostSnapshot) => void;
 }
 
@@ -162,6 +164,7 @@ export class HostSession {
   private runtimeDeps(): RuntimeDeps {
     return {
       meta: this.meta,
+      now: this.deps.now ?? Date.now,
       stealWindowMs: this.lobby.settings.stealWindowSec * 1000,
       revealMs: REVEAL_MS,
       setTimer: this.deps.setTimer,

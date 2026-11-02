@@ -49,6 +49,10 @@ export interface GameView {
   deckRemaining: number;
   winnerIds: TeamId[];
   viewerTeamId: TeamId | null;
+  /** Set while the game is paused; `by` is the player id who paused. */
+  paused: { by: string } | null;
+  /** Time left on the steal or reveal timer when this view was built (frozen while paused). */
+  timerLeftMs: number | null;
 }
 
 const UNKNOWN: TrackMeta = { title: 'Unknown', artists: [] };
@@ -84,5 +88,7 @@ export function toView(state: GameState, meta: Record<TrackId, TrackMeta>, viewe
     deckRemaining: state.deck.length,
     winnerIds: [...state.winnerIds],
     viewerTeamId,
+    paused: null,
+    timerLeftMs: null,
   };
 }

@@ -8,7 +8,9 @@ const PLAYERS = { p1: 'A', p2: 'B', p3: 'C' };
 function fakeDeps() {
   const timers: { fn: () => void; ms: number; cancelled: boolean }[] = [];
   const changes: GameState[] = [];
+  let t = 0;
   const deps: RuntimeDeps = {
+    now: () => t,
     meta: { t1: { title: 'Smells Like Teen Spirit', artists: ['Nirvana'] } },
     stealWindowMs: 5000,
     revealMs: 5000,
@@ -28,7 +30,10 @@ function fakeDeps() {
     t.fn();
   };
   const pending = () => timers.filter((x) => !x.cancelled).map((x) => x.ms);
-  return { deps, timers, changes, fire, pending };
+  const advance = (ms: number) => {
+    t += ms;
+  };
+  return { deps, timers, changes, fire, pending, advance };
 }
 
 describe('HostRuntime', () => {
@@ -175,5 +180,133 @@ describe('HostRuntime hardening', () => {
     expect(rt.command({ type: 'passTurn' })).toEqual({ ok: false, reason: 'disposed' });
     expect(pending()).toEqual([]);
     expect(changes).toHaveLength(1);
+  });
+});
+
+/** B (p2) places and locks in: the steal window opens at the current clock time. */
+function toStealWindow(rt: HostRuntime) {
+  rt.handleIntent('p2', { type: 'place', slot: 1 });
+  rt.handleIntent('p2', { type: 'lockIn' });
+}
+
+describe('HostRuntime pause', () => {
+  it('pauses the steal window and resumes with the time left', () => {
+    const { deps, pending, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    toStealWindow(rt);
+    advance(2000);
+    expect(rt.handleIntent('p3', { type: 'pause' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    expect(rt.paused).toEqual({ by: 'p3' });
+    expect(rt.viewFor('p1').paused).toEqual({ by: 'p3' });
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3000);
+    advance(60_000);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3000);
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([3000]);
+    expect(rt.paused).toBeNull();
+    expect(rt.viewFor('p1').paused).toBeNull();
+  });
+
+  it('reports the running timer to views', () => {
+    const { deps, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.viewFor('p1').timerLeftMs).toBeNull();
+    toStealWindow(rt);
+    advance(1500);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3500);
+  });
+
+  it('pauses during the reveal and while deciding', () => {
+    const { deps, fire, pending, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: true });
+    expect(rt.viewFor('p1').timerLeftMs).toBeNull();
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    toStealWindow(rt);
+    fire();
+    expect(rt.state.phase).toBe('reveal');
+    advance(1000);
+    expect(rt.handleIntent('p2', { type: 'pause' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    expect(rt.handleIntent('p2', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([4000]);
+  });
+
+  it('rejects moves and host commands while paused', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(rt.handleIntent('p2', { type: 'place', slot: 0 })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.handleIntent('p1', { type: 'buy' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.command({ type: 'passTurn' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.command({ type: 'trackFailed' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: false, reason: 'already paused' });
+    expect(rt.state.turn?.slot).toBeNull();
+  });
+
+  it('rejects resume when not paused and pause once finished', () => {
+    const { deps, fire } = fakeDeps();
+    const rt = new HostRuntime(newGame({ cardsToWin: 2 }), PLAYERS, deps);
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: false, reason: 'not paused' });
+    toStealWindow(rt);
+    fire();
+    expect(rt.state.phase).toBe('finished');
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: false, reason: 'nothing to pause' });
+  });
+
+  it('a fired-but-cancelled timer does nothing while paused', () => {
+    const { deps, timers } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    toStealWindow(rt);
+    const stealTimer = timers.at(-1);
+    rt.handleIntent('p3', { type: 'pause' });
+    stealTimer?.fn();
+    expect(rt.state.phase).toBe('stealWindow');
+  });
+
+  it('notifies onChange on pause and resume', () => {
+    const { deps, changes } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(changes).toHaveLength(1);
+    rt.handleIntent('p1', { type: 'resume' });
+    expect(changes).toHaveLength(2);
+  });
+
+  it('survives serialize/restore while paused', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    toStealWindow(rt);
+    a.advance(2000);
+    rt.handleIntent('p3', { type: 'pause' });
+    const saved = rt.serialize();
+    rt.dispose();
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(saved, b.deps);
+    expect(restored.paused).toEqual({ by: 'p3' });
+    expect(b.pending()).toEqual([]);
+    expect(restored.viewFor('p1').timerLeftMs).toBe(3000);
+    expect(restored.handleIntent('p3', { type: 'resume' })).toEqual({ ok: true });
+    expect(b.pending()).toEqual([3000]);
+  });
+
+  it('restores v1 saves as not paused', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    toStealWindow(rt);
+    const v1 = JSON.stringify({ ...JSON.parse(rt.serialize()), v: 1, paused: undefined });
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(v1, b.deps);
+    expect(restored.paused).toBeNull();
+    expect(b.pending()).toEqual([5000]);
+  });
+
+  it('rejects unknown players pausing', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.handleIntent('nobody', { type: 'pause' })).toEqual({ ok: false, reason: 'unknown player' });
+    expect(rt.paused).toBeNull();
   });
 });
