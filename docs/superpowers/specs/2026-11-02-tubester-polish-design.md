@@ -201,3 +201,29 @@ These came from a second round of feedback on the branch. They change rules from
   - The song in play is discarded and never revealed.
   - Every screen shows the end-of-game card, then the finished screen with the host's **New game**.
 - It is the only game action allowed while paused, and it also clears the pause.
+
+## Addendum 2 (2026-11-02): naming and passing during the steal window
+
+Third round of feedback. This replaces the parts of section 7 noted below.
+
+### 10. Every other team answers once
+
+- During the steal window, **every team other than the active team** gets the steal screen, **including teams with 0 tokens**.
+- A team answers once per turn by pressing **TUBESTER!**. The button is always enabled until the team has pressed or the time runs out. A press can carry:
+  - **slots** (0 or more, up to the team's tokens, 1 token each, as in section 8), and/or
+  - **a name guess** (title and artist), or
+  - **nothing**, which means **pass**: no tokens spent, the team has answered.
+- A team with 0 tokens cannot pick slots, but can name the song or pass.
+- If the press asks for slots and none of them are free, it is refused at no cost, and the team can choose again (unchanged from section 8).
+- **Early close (replaces section 7):** the window closes as soon as **every other team has pressed**, or when the timer runs out.
+  - The section 7 rules "closes when no free slot is left" and "reveals at lock-in when nobody can steal" are **removed**, because a team may still want to name the song (my call).
+  - A buy no longer affects closing.
+
+### 11. Naming bonus for stealers
+
+- A stealing team's name guess earns **+1 token** (up to the token cap) when both title and artist match. This uses the same fuzzy matcher as the active team's guess.
+- **This only applies when the active team did not name it correctly.** If the active team's name was right, stealers' names earn nothing.
+- **Every** stealing team that named it correctly gets the token, not only the first.
+- The bonus is independent of the card: a team can earn it with a wrong slot, or with no slot at all.
+- The reveal says who earned it, e.g. "Cassette named it: +1 token".
+- The guess is checked by the host. The song's title and artist are still never sent before the reveal.
