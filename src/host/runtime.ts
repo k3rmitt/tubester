@@ -70,6 +70,14 @@ function parseGuess(raw: unknown): Guess | undefined | null {
   return { title, artist };
 }
 
+/** Saves from before steal answers existed lack these fields. */
+function upgradeState(state: GameState): GameState {
+  const turn = state.turn ? { ...state.turn, answered: state.turn.answered ?? [], namedBy: state.turn.namedBy ?? [] } : null;
+  const o = state.lastOutcome;
+  const lastOutcome = o ? { ...o, stealNameBonus: o.stealNameBonus ?? [] } : null;
+  return { ...state, turn, lastOutcome };
+}
+
 interface PauseState {
   by: string;
   /** Time left on the steal or reveal timer when paused; null when none was running. */
@@ -141,7 +149,7 @@ export class HostRuntime {
     const saved = JSON.parse(json) as Partial<Omit<Saved, 'v'>> & { v?: number };
     if ((saved.v !== 1 && saved.v !== 2) || !saved.state || !saved.players) throw new Error('invalid saved game');
     const paused = saved.v === 2 && saved.paused ? saved.paused : null;
-    return new HostRuntime(saved.state, saved.players, deps, paused);
+    return new HostRuntime(upgradeState(saved.state), saved.players, deps, paused);
   }
 
   dispose(): void {

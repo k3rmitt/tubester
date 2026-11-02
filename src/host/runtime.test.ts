@@ -387,3 +387,21 @@ describe('HostRuntime steal answers', () => {
     expect(JSON.stringify(view)).not.toContain('namedBy');
   });
 });
+
+describe('HostRuntime old saves', () => {
+  it('restores a save from before steal answers existed', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    const saved = JSON.parse(rt.serialize());
+    delete saved.state.turn.answered;
+    delete saved.state.turn.namedBy;
+    saved.state.lastOutcome = { trackId: 'a1', activeTeamId: 'A', activeCorrect: true, cardWonBy: 'A', nameBonus: false };
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(JSON.stringify({ ...saved, v: 1 }), b.deps);
+    expect(restored.viewFor('p1').turn?.answered).toEqual([]);
+    expect(restored.handleIntent('p3', { type: 'steal', slots: [] })).toEqual({ ok: true });
+    expect(restored.state.lastOutcome?.stealNameBonus).toEqual([]);
+  });
+});

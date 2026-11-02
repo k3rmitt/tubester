@@ -3,6 +3,7 @@ import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
 import { EndCard } from './EndCard';
+import { stillFree } from './stealPicks';
 import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
 import { nameBonusLine, revealHeadline, stealTakenNote, teamById, winnersHeadline } from './text';
 
@@ -130,7 +131,7 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(i)) next.delete(i);
-      else if (next.size < me.tokens) next.add(i);
+      else if (stillFree(next, turn).length < me.tokens) next.add(i);
       return next;
     });
   const slots: SlotProps[] = Array.from({ length: active.timeline.length + 1 }, (_, i): SlotProps => {
@@ -144,7 +145,8 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
     if (answered || left === 0 || me.tokens < 1) return { state: 'free' };
     return { state: picked.has(i) ? 'mine' : 'free', onPick: () => toggle(i) };
   });
-  const canPress = !answered && picked.size <= me.tokens && left > 0;
+  const live = stillFree(picked, turn);
+  const canPress = !answered && live.length <= me.tokens && left > 0;
   const takenNote = answered && pressed !== null ? stealTakenNote(pressed, myClaims.length) : null;
   const guess = title.trim() || artist.trim() ? { title, artist } : undefined;
   const hint =
@@ -179,8 +181,8 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
           className="btn tubester"
           disabled={!canPress}
           onClick={() => {
-            setPressed(picked.size);
-            act({ type: 'steal', slots: [...picked], guess });
+            setPressed(live.length);
+            act({ type: 'steal', slots: live, guess });
           }}
         >
           TUBESTER!
