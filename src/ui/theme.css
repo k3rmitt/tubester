@@ -68,6 +68,14 @@ p { margin: 0; }
 .slot.theirs { border: 2px solid var(--other); background: var(--other-bg); color: var(--other-text); font-weight: 600; }
 .slot.taken { border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--soft); }
 .stealing .slot.mine { border-color: var(--steal); background: var(--steal-bg); color: var(--steal-text); }
+.slot.can-pick { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 12px; border: 2px solid var(--me); background: rgba(255, 210, 63, 0.08); color: var(--me); font-weight: 600; text-align: left; }
+.slot-plus { flex: none; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--me); color: var(--bg); font-family: var(--display); font-size: 18px; font-weight: 800; line-height: 1; }
+.slot.can-pick.mine { background: var(--me); color: var(--bg); }
+.slot.can-pick.mine .slot-plus { background: var(--bg); color: var(--me); }
+.stealing .slot.can-pick { border-color: var(--steal); background: rgba(255, 138, 76, 0.08); color: var(--steal); }
+.stealing .slot.can-pick .slot-plus { background: var(--steal); }
+.stealing .slot.can-pick.mine { background: var(--steal); color: var(--bg); }
+.stealing .slot.can-pick.mine .slot-plus { background: var(--bg); color: var(--steal); }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .field.inline { flex-direction: row; align-items: center; justify-content: space-between; font-size: 14px; color: var(--soft); }
 .input { height: 44px; min-width: 0; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); padding: 0 12px; font-size: 15px; }

@@ -61,6 +61,7 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
     <section className="rows">
       <NowPlaying label={`Your turn · ${team.name}`} audio={audio} />
       <h2>Place it on your timeline</h2>
+      <span className="muted">Tap a yellow spot to place the song</span>
       <Timeline cards={team.timeline} slots={slots} />
       <span className="muted">Name it for +1 token (optional)</span>
       <div className="grid2">

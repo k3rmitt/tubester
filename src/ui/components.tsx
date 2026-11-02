@@ -99,11 +99,16 @@ export function Timeline({
         <button
           key={`slot-${i}`}
           type="button"
-          className={`slot ${slot.state}`}
+          className={slot.onPick ? `slot ${slot.state} can-pick` : `slot ${slot.state}`}
           disabled={!slot.onPick}
           aria-pressed={slot.state === 'mine'}
           onClick={slot.onPick}
         >
+          {slot.onPick && (
+            <span className="slot-plus" aria-hidden="true">
+              +
+            </span>
+          )}
           {slotLabel(cards, i)}
           {slot.note ? ` · ${slot.note}` : ''}
         </button>,
