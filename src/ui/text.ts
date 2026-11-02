@@ -33,7 +33,21 @@ export function winnersHeadline(view: GameView): string {
   if (view.viewerTeamId && view.winnerIds.includes(view.viewerTeamId)) return 'You win!';
   const names = view.winnerIds.map((id) => teamById(view, id)?.name ?? id);
   if (names.length === 1) return `${names[0]} wins!`;
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)} win!`;
+  return `${joinNames(names)} win!`;
+}
+
+function joinNames(names: string[]): string {
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+/** Who earned a token for naming the song this turn: the active team, or the stealers who named it. */
+export function nameBonusLine(view: GameView): string | null {
+  const o = view.reveal?.outcome;
+  if (!o) return null;
+  const ids = o.nameBonus ? [o.activeTeamId] : o.stealNameBonus;
+  if (ids.length === 0) return null;
+  const names = ids.map((id) => teamById(view, id)?.name ?? id);
+  return `${joinNames(names)} named it: +1 token${names.length > 1 ? ' each' : ''}`;
 }
 
 /** Winners get the spotlight; everyone else gets the dimmed card. */

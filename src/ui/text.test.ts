@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, run, teamOf } from '../engine/testkit';
 import type { GameState } from '../engine/types';
 import { toView } from '../host/view';
-import { cardCount, connectionHeadline, stealTakenNote, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
+import { cardCount, connectionHeadline, nameBonusLine, stealTakenNote, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
 
 const reveal = (g: GameState, viewer: string | null) => toView(g, {}, viewer);
 const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot: number }[] = []) =>
@@ -96,5 +96,20 @@ describe('stealTakenNote', () => {
     expect(stealTakenNote(2, 2)).toBeNull();
     expect(stealTakenNote(3, 2)).toBe('1 slot was already taken');
     expect(stealTakenNote(3, 1)).toBe('2 slots were already taken');
+  });
+});
+
+describe('nameBonusLine', () => {
+  const base = () => reveal(lockAndClose(newGame(), 1), 'A');
+  const withOutcome = (o: { nameBonus: boolean; stealNameBonus: string[] }) => {
+    const v = base();
+    if (!v.reveal) throw new Error('no reveal');
+    return { ...v, reveal: { ...v.reveal, outcome: { ...v.reveal.outcome, ...o } } };
+  };
+  it('names who earned a token for naming the song', () => {
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: [] }))).toBeNull();
+    expect(nameBonusLine(withOutcome({ nameBonus: true, stealNameBonus: [] }))).toBe('Cassette named it: +1 token');
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: ['C'] }))).toBe('Mixtape named it: +1 token');
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: ['C', 'A'] }))).toBe('Mixtape and Vinyl named it: +1 token each');
   });
 });

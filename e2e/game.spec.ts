@@ -47,7 +47,8 @@ test('three players play a short game to the end', async ({ browser }) => {
   await expect(host.page.getByLabel('Team for Marco')).toBeVisible();
   await expect(host.page.getByRole('radio', { name: 'Demo tones' })).toBeChecked();
   await setNumber(host.page, 'Cards to win', '2');
-  await setNumber(host.page, 'Steal window (s)', '2');
+  // Long window: the game only moves on because the other teams pass (the window closes early).
+  await setNumber(host.page, 'Steal window (s)', '60');
   await host.page.getByRole('button', { name: 'Start game' }).click();
 
   const pages = [host.page, lea, marco];
@@ -73,6 +74,12 @@ test('three players play a short game to the end', async ({ browser }) => {
     }
     await player.getByRole('button', { name: /^(Before|Between|After)/ }).first().click();
     await player.getByRole('button', { name: 'Lock in' }).click();
+    for (const p of pages) {
+      if (p === player) continue;
+      const press = p.getByRole('button', { name: 'TUBESTER!' });
+      await expect(press).toBeEnabled({ timeout: 15_000 });
+      await press.click();
+    }
     const next = host.page.getByRole('button', { name: /^(Next|New game)$/ });
     await expect(next).toBeVisible({ timeout: 15_000 });
     if ((await next.textContent()) === 'Next') {

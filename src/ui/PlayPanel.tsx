@@ -4,7 +4,7 @@ import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
 import { EndCard } from './EndCard';
 import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
-import { revealHeadline, teamById, winnersHeadline, stealTakenNote } from './text';
+import { nameBonusLine, revealHeadline, stealTakenNote, teamById, winnersHeadline } from './text';
 
 export interface PlayPanelProps {
   view: GameView;
@@ -40,6 +40,32 @@ export function PlayPanel(props: PlayPanelProps) {
   return <Watching {...props} />;
 }
 
+function NameFields({
+  title,
+  artist,
+  setTitle,
+  setArtist,
+}: {
+  title: string;
+  artist: string;
+  setTitle: (v: string) => void;
+  setArtist: (v: string) => void;
+}) {
+  const props = { className: 'input', maxLength: 200, autoComplete: 'off', autoCorrect: 'off', autoCapitalize: 'off', spellCheck: false };
+  return (
+    <div className="grid2">
+      <label className="field">
+        Title
+        <input {...props} value={title} onChange={(e) => setTitle(e.target.value)} />
+      </label>
+      <label className="field">
+        Artist
+        <input {...props} value={artist} onChange={(e) => setArtist(e.target.value)} />
+      </label>
+    </div>
+  );
+}
+
 function ErrorLine({ error }: { error: string | null }) {
   return error ? (
     <p className="error" role="alert">
@@ -67,34 +93,7 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
       <span className="muted">Tap a yellow spot to place the song</span>
       <Timeline cards={team.timeline} slots={slots} />
       <span className="muted">Name it for +1 token (optional)</span>
-      <div className="grid2">
-        <label className="field">
-          Title
-          <input
-            className="input"
-            value={title}
-            maxLength={200}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          Artist
-          <input
-            className="input"
-            value={artist}
-            maxLength={200}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            onChange={(e) => setArtist(e.target.value)}
-          />
-        </label>
-      </div>
+      <NameFields title={title} artist={artist} setTitle={setTitle} setArtist={setArtist} />
       <ErrorLine error={error} />
       <div className="actions sticky-bottom">
         <div className="actions">
@@ -118,13 +117,15 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
 function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
   const [picked, setPicked] = useState<ReadonlySet<number>>(() => new Set());
   const [pressed, setPressed] = useState<number | null>(null);
+  const [title, setTitle] = useState('');
+  const [artist, setArtist] = useState('');
   const left = useCountdown(view.timerLeftMs ?? stealWindowMs, view.paused === null);
   const turn = view.turn;
   const active = teamById(view, turn?.teamId);
   const me = teamById(view, view.viewerTeamId);
   if (!turn || !active || !me) return null;
+  const answered = turn.answered.includes(me.id);
   const myClaims = turn.steals.filter((s) => s.teamId === me.id);
-  const myClaim = myClaims.length > 0;
   const toggle = (i: number) =>
     setPicked((prev) => {
       const next = new Set(prev);
@@ -140,12 +141,16 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
         ? { state: 'mine', note: 'your steal' }
         : { state: 'taken', note: teamById(view, claim.teamId)?.name };
     }
-    if (myClaim || left === 0) return { state: 'free' };
+    if (answered || left === 0 || me.tokens < 1) return { state: 'free' };
     return { state: picked.has(i) ? 'mine' : 'free', onPick: () => toggle(i) };
   });
-  const canPress = picked.size > 0 && !myClaim && picked.size <= me.tokens && left > 0;
-  const takenNote = myClaim && pressed !== null ? stealTakenNote(pressed, myClaims.length) : null;
-  const plural = me.tokens === 1 ? 'slot' : 'slots';
+  const canPress = !answered && picked.size <= me.tokens && left > 0;
+  const takenNote = answered && pressed !== null ? stealTakenNote(pressed, myClaims.length) : null;
+  const guess = title.trim() || artist.trim() ? { title, artist } : undefined;
+  const hint =
+    me.tokens > 0
+      ? 'Pick slots (1 token each) and/or name the song, or press TUBESTER! to pass.'
+      : 'No tokens to steal, but you can name the song for +1 token, or press TUBESTER! to pass.';
   const seconds = Math.ceil(left / 1000);
   return (
     <section className="rows stealing">
@@ -160,21 +165,22 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
       </div>
       <h2>{active.name}'s timeline</h2>
       <Timeline cards={active.timeline} slots={slots} />
+      {!answered && left > 0 && (
+        <>
+          <span className="muted">Name it for +1 token (only if {active.name} didn't)</span>
+          <NameFields title={title} artist={artist} setTitle={setTitle} setArtist={setArtist} />
+        </>
+      )}
       <ErrorLine error={error} />
       <div className="sticky-bottom">
-        <span className="muted">
-          {myClaim
-            ? `Steal placed. Fingers crossed!${takenNote ? ` ${takenNote}.` : ''}`
-            : `Pick up to ${me.tokens} ${plural}, then press. 1 token each.`}
-        </span>
+        <span className="muted">{answered ? `Answer sent. Fingers crossed!${takenNote ? ` ${takenNote}.` : ''}` : hint}</span>
         <button
           type="button"
           className="btn tubester"
           disabled={!canPress}
           onClick={() => {
-            if (picked.size === 0) return;
             setPressed(picked.size);
-            act({ type: 'steal', slots: [...picked] });
+            act({ type: 'steal', slots: [...picked], guess });
           }}
         >
           TUBESTER!
@@ -218,7 +224,7 @@ function BuyButton({ view, act }: Pick<PlayPanelProps, 'view' | 'act'>) {
 function Reveal({ view }: { view: GameView }) {
   const r = view.reveal;
   if (!r) return null;
-  const active = teamById(view, r.outcome.activeTeamId);
+  const bonus = nameBonusLine(view);
   return (
     <section className="rows">
       <div className="reveal">
@@ -229,7 +235,7 @@ function Reveal({ view }: { view: GameView }) {
         <span>{r.artists.join(', ')}</span>
       </div>
       <p className="headline">{revealHeadline(view)}</p>
-      {r.outcome.nameBonus && <p className="muted">{active?.name ?? 'They'} named it: +1 token</p>}
+      {bonus && <p className="muted">{bonus}</p>}
     </section>
   );
 }
