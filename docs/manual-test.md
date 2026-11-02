@@ -13,6 +13,7 @@ Run before announcing a release. Host: desktop Chrome with a Premium account all
 - [ ] Share without tab audio once → clear error, Start broadcast available again.
 
 ## Guests
+- [ ] Opening the invite link plays the splash (spinning record, "You know, You knew it"); a tap skips it; joining isn't delayed.
 - [ ] iPhone Safari joins via link, hears audio after the 3 s countdown (if not, the "Tap to enable sound" banner fixes it).
 - [ ] Android Chrome joins and hears audio.
 - [ ] Screen stays awake during the game.
@@ -24,3 +25,9 @@ Run before announcing a release. Host: desktop Chrome with a Premium account all
 - [ ] Stop sharing from Chrome's bar → "Broadcast stopped · Resume broadcast" banner → resume works, guests hear audio again.
 - [ ] Reload the host tab mid-game → game comes back, press Resume broadcast, guests reconnect.
 - [ ] Play 60+ minutes → no Spotify logout (token refresh works).
+- [ ] Album covers show on timeline cards and big at the reveal; the playing song shows a "?" sleeve until then.
+- [ ] A guest presses **Pause** mid-song → every screen shows "Paused by ⟨name⟩", the Spotify song pauses; another player presses **Resume** → the song continues from the same point.
+- [ ] Pause during the steal window → phone countdowns freeze and continue from the same second.
+- [ ] Pause during the 3 s countdown → nothing plays until Resume.
+- [ ] Reload the host tab while paused → the game comes back paused.
+- [ ] Win the game → winners see "You win!" with a spotlight and confetti; others see "⟨Team⟩ wins!" on a dimmed screen; **See the timelines** closes it.
