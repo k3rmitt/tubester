@@ -227,3 +227,11 @@ Third round of feedback. This replaces the parts of section 7 noted below.
 - The bonus is independent of the card: a team can earn it with a wrong slot, or with no slot at all.
 - The reveal says who earned it, e.g. "Cassette named it: +1 token".
 - The guess is checked by the host. The song's title and artist are still never sent before the reveal.
+
+### Details settled after the builder check (my calls)
+
+- **Stealers can't see whether the active team named the song.** That would hint at the answer. The name fields are always offered, and the rule is applied only at the reveal.
+- **Any member of a team can press.** The first press that is accepted is the team's answer. A later press from the same team is refused ("already answered").
+- **A refused press counts as no answer** (slots asked, none free). Its name guess is **not** scored, and the team can press again. A partially accepted press (some slots free) counts as the team's answer, with its name guess.
+- **Name bonuses are given at the reveal, not when pressing.** A 0-token team that names the song can't use that token for slots in the same window.
+- **Disconnected teams still count** as teams that haven't pressed. If someone is away, the timer ends the window, or the game can be paused.
