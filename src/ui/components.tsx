@@ -34,12 +34,12 @@ export function TeamIcon({ teamId, size = 16 }: { teamId: string; size?: number 
   );
 }
 
-/** Record-shop tag: the team logo above its name in capitals. */
+/** The team's line logo next to its name. */
 export function TeamTag({ teamId, name, me = false }: { teamId: string; name: string; me?: boolean }) {
   return (
     <span className={me ? 'team-tag me' : 'team-tag'}>
-      <TeamIcon teamId={teamId} size={26} />
-      <b>{name}</b>
+      <TeamIcon teamId={teamId} size={22} />
+      {name}
     </span>
   );
 }
