@@ -165,3 +165,37 @@ The agreed style is A + C in `mockups/…/covers.html`.
 - How the countdown is paused and resumed.
 - Component structure, CSS class names, and exact animation timings within the ranges above.
 - Placement of the Pause control, as long as it is always reachable on a 360 px phone and doesn't crowd the TUBESTER! button.
+
+## Addendum (2026-11-02, after reviewing the branch): steals and ending a paused game
+
+These came from a second round of feedback on the branch. They change rules from the base spec, and this addendum wins over it.
+
+### 7. The steal window ends early
+
+- The steal window closes as soon as **every team that can steal has pressed TUBESTER!**.
+  - "Can steal" means every team other than the active team, minus teams with 0 tokens.
+  - This is checked again after every steal, so a team that buys a card down to 0 tokens during the window stops counting.
+- It also closes early when no free slot is left on the active team's timeline (my call).
+- If no team can steal when the active team locks in, the reveal comes straight away instead of after the full window (my call).
+- Otherwise the timer still applies (default 30 s).
+
+### 8. Steal several slots
+
+- During the steal window, a player selects **several slots**, up to their team's token count, then presses **TUBESTER!** once.
+  - Each claimed slot costs 1 token.
+  - A team presses TUBESTER! **once per turn**.
+- **Contested slots:**
+  - A slot still belongs to the first team whose press reaches the host. Two teams never hold the same slot.
+  - If some of the selected slots were taken first, the press **claims the ones that are still free** and charges only for those.
+  - The phone then says how many were taken, e.g. "1 slot was already taken". If none are free, the press is refused at no cost.
+- **Who wins the card:** when the active team is wrong, the card goes to the first correct steal in arrival order. One team's slots count in the order they were sent. Today's rule is unchanged.
+
+### 9. End the game while paused
+
+- On the pause screen, **the host** (not guests) sees **End game**.
+- Pressing it asks "End the game for everyone?", with **End game** and **Cancel**.
+- Confirming finishes the game at once:
+  - The winners are the teams with the most cards, with ties shared; the starting card counts.
+  - The song in play is discarded and never revealed.
+  - Every screen shows the end-of-game card, then the finished screen with the host's **New game**.
+- It is the only game action allowed while paused, and it also clears the pause.
