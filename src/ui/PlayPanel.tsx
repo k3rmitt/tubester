@@ -4,7 +4,7 @@ import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
 import { EndCard } from './EndCard';
 import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
-import { revealHeadline, teamById, winnersHeadline } from './text';
+import { revealHeadline, teamById, winnersHeadline, stealTakenNote } from './text';
 
 export interface PlayPanelProps {
   view: GameView;
@@ -116,13 +116,22 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
 }
 
 function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
-  const [picked, setPicked] = useState<number | null>(null);
+  const [picked, setPicked] = useState<ReadonlySet<number>>(() => new Set());
+  const [pressed, setPressed] = useState<number | null>(null);
   const left = useCountdown(view.timerLeftMs ?? stealWindowMs, view.paused === null);
   const turn = view.turn;
   const active = teamById(view, turn?.teamId);
   const me = teamById(view, view.viewerTeamId);
   if (!turn || !active || !me) return null;
-  const myClaim = turn.steals.find((s) => s.teamId === me.id);
+  const myClaims = turn.steals.filter((s) => s.teamId === me.id);
+  const myClaim = myClaims.length > 0;
+  const toggle = (i: number) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else if (next.size < me.tokens) next.add(i);
+      return next;
+    });
   const slots: SlotProps[] = Array.from({ length: active.timeline.length + 1 }, (_, i): SlotProps => {
     if (i === turn.slot) return { state: 'theirs', note: `${active.name}'s pick` };
     const claim = turn.steals.find((s) => s.slot === i);
@@ -132,9 +141,11 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
         : { state: 'taken', note: teamById(view, claim.teamId)?.name };
     }
     if (myClaim || left === 0) return { state: 'free' };
-    return { state: i === picked ? 'mine' : 'free', onPick: () => setPicked(i) };
+    return { state: picked.has(i) ? 'mine' : 'free', onPick: () => toggle(i) };
   });
-  const canPress = picked !== null && !myClaim && me.tokens >= 1 && left > 0;
+  const canPress = picked.size > 0 && !myClaim && picked.size <= me.tokens && left > 0;
+  const takenNote = myClaim && pressed !== null ? stealTakenNote(pressed, myClaims.length) : null;
+  const plural = me.tokens === 1 ? 'slot' : 'slots';
   const seconds = Math.ceil(left / 1000);
   return (
     <section className="rows stealing">
@@ -152,14 +163,18 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
       <ErrorLine error={error} />
       <div className="sticky-bottom">
         <span className="muted">
-          {myClaim ? 'Steal placed. Fingers crossed!' : 'Pick a slot, then press. Costs 1 token.'}
+          {myClaim
+            ? `Steal placed. Fingers crossed!${takenNote ? ` ${takenNote}.` : ''}`
+            : `Pick up to ${me.tokens} ${plural}, then press. 1 token each.`}
         </span>
         <button
           type="button"
           className="btn tubester"
           disabled={!canPress}
           onClick={() => {
-            if (picked !== null) act({ type: 'steal', slots: [picked] });
+            if (picked.size === 0) return;
+            setPressed(picked.size);
+            act({ type: 'steal', slots: [...picked] });
           }}
         >
           TUBESTER!

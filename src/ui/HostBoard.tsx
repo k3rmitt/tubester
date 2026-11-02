@@ -104,7 +104,7 @@ export function HostBoard({
           </section>
         </div>
       </div>
-      <PauseCover view={view} players={players} act={act} />
+      <PauseCover view={view} players={players} act={act} onEndGame={() => session.endGame()} />
     </>
   );
 }

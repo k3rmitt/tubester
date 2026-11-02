@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { LobbyPlayer } from '../host/lobby';
 import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
@@ -19,14 +19,44 @@ export function PauseButton({ view, act }: { view: GameView; act: Act }) {
   );
 }
 
-/** Full-screen cover while paused; anyone can resume. */
-export function PauseCover({ view, players, act }: { view: GameView; players: LobbyPlayer[]; act: Act }) {
+/** Full-screen cover while paused; anyone can resume, and the host can end the game. */
+export function PauseCover({
+  view,
+  players,
+  act,
+  onEndGame,
+}: {
+  view: GameView;
+  players: LobbyPlayer[];
+  act: Act;
+  onEndGame?: () => void;
+}) {
   const resume = useRef<HTMLButtonElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  const [confirming, setConfirming] = useState(false);
   const paused = view.paused !== null;
   useEffect(() => {
-    if (paused) resume.current?.focus();
+    if (!paused) setConfirming(false);
   }, [paused]);
+  useEffect(() => {
+    if (!paused) return;
+    (confirming ? cancel : resume).current?.focus();
+  }, [paused, confirming]);
   if (!view.paused) return null;
+  if (confirming && onEndGame) {
+    return (
+      <div className="pause-cover" role="alertdialog" aria-modal="true" aria-labelledby="end-confirm-title">
+        <h2 id="end-confirm-title">End the game for everyone?</h2>
+        <p className="muted">The team with the most cards wins. The song in play won't be revealed.</p>
+        <button type="button" className="btn primary danger pause-resume" onClick={onEndGame}>
+          End game
+        </button>
+        <button ref={cancel} type="button" className="btn pause-secondary" onClick={() => setConfirming(false)}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
   const by = view.paused.by;
   const name = players.find((p) => p.id === by)?.name ?? 'someone';
   return (
@@ -36,6 +66,11 @@ export function PauseCover({ view, players, act }: { view: GameView; players: Lo
       <button ref={resume} type="button" className="btn primary pause-resume" onClick={() => act({ type: 'resume' })}>
         Resume
       </button>
+      {onEndGame && (
+        <button type="button" className="btn pause-secondary" onClick={() => setConfirming(true)}>
+          End game
+        </button>
+      )}
     </div>
   );
 }

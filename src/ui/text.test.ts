@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, run, teamOf } from '../engine/testkit';
 import type { GameState } from '../engine/types';
 import { toView } from '../host/view';
-import { cardCount, connectionHeadline, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
+import { cardCount, connectionHeadline, stealTakenNote, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
 
 const reveal = (g: GameState, viewer: string | null) => toView(g, {}, viewer);
 const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot: number }[] = []) =>
@@ -88,5 +88,13 @@ describe('connectionHeadline', () => {
     ['closed', false, 'room full', 'Connection lost'],
   ] as const)('%s, joined=%s, error=%s → %s', (status, joined, error, headline) => {
     expect(connectionHeadline(status, joined, error)).toBe(headline);
+  });
+});
+
+describe('stealTakenNote', () => {
+  it('says how many selected slots were already taken', () => {
+    expect(stealTakenNote(2, 2)).toBeNull();
+    expect(stealTakenNote(3, 2)).toBe('1 slot was already taken');
+    expect(stealTakenNote(3, 1)).toBe('2 slots were already taken');
   });
 });

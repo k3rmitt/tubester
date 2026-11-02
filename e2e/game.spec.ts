@@ -105,4 +105,10 @@ test('a guest gets the game back after the host reloads', async ({ browser }) =>
   await expect(lea.getByText('Reconnecting…')).toBeHidden({ timeout: 60_000 });
   await expect(lea.locator('.scores')).toHaveText(scores ?? '');
   await expect.poll(() => hasAudio(lea), { timeout: 30_000 }).toBe(true);
+
+  await host.page.getByRole('button', { name: 'Pause' }).click();
+  await host.page.getByRole('button', { name: 'End game' }).click();
+  await expect(host.page.getByText('End the game for everyone?')).toBeVisible();
+  await host.page.getByRole('button', { name: 'End game' }).click();
+  for (const p of [host.page, lea]) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
 });

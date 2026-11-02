@@ -44,3 +44,10 @@ export function endCardTone(view: GameView): 'win' | 'lose' {
 export function cardCount(n: number): string {
   return n === 1 ? '1 card' : `${n} cards`;
 }
+
+/** After a multi-slot steal: how many of the selected slots another team took first. */
+export function stealTakenNote(selected: number, claimed: number): string | null {
+  const lost = selected - claimed;
+  if (lost <= 0) return null;
+  return lost === 1 ? '1 slot was already taken' : `${lost} slots were already taken`;
+}
