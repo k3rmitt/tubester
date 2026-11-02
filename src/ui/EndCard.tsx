@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useEffect, useRef } from 'react';
 import type { GameView } from '../host/view';
 import { cardCount, endCardTone, teamById, winnersHeadline } from './text';
 
@@ -22,6 +22,10 @@ const CONFETTI: [number, number, number][] = [
 
 /** The end-of-game card: a spotlight and confetti for the winners, a dimmed screen for everyone else. */
 export function EndCard({ view, onClose }: { view: GameView; onClose: () => void }) {
+  const close = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    close.current?.focus();
+  }, []);
   const tone = endCardTone(view);
   const me = teamById(view, view.viewerTeamId);
   const line = me ? (tone === 'win' ? `${cardCount(me.timeline.length)} · well played` : `Your team: ${cardCount(me.timeline.length)}`) : null;
@@ -43,7 +47,7 @@ export function EndCard({ view, onClose }: { view: GameView; onClose: () => void
       <div className="end-card" role="dialog" aria-modal="true" aria-labelledby="end-title">
         <h2 id="end-title">{winnersHeadline(view)}</h2>
         {line && <p className="muted">{line}</p>}
-        <button type="button" className="btn" onClick={onClose}>
+        <button ref={close} type="button" className="btn" onClick={onClose}>
           See the timelines
         </button>
       </div>

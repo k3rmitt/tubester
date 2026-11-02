@@ -58,6 +58,7 @@ test('three players play a short game to the end', async ({ browser }) => {
 
   await lea.getByRole('button', { name: 'Pause' }).click();
   for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeVisible({ timeout: 15_000 });
+  await expect(marco.getByRole('button', { name: 'Resume' })).toBeFocused();
   await marco.getByRole('button', { name: 'Resume' }).click();
   for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeHidden({ timeout: 15_000 });
 
@@ -82,6 +83,7 @@ test('three players play a short game to the end', async ({ browser }) => {
   }
 
   for (const p of pages) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
+  await expect(lea.getByRole('button', { name: 'See the timelines' })).toBeFocused();
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
   expect(sawReveal || (await lea.getByText('It was', { exact: true }).isVisible())).toBe(true);
 });

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { LobbyPlayer } from '../host/lobby';
 import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
@@ -20,6 +21,11 @@ export function PauseButton({ view, act }: { view: GameView; act: Act }) {
 
 /** Full-screen cover while paused; anyone can resume. */
 export function PauseCover({ view, players, act }: { view: GameView; players: LobbyPlayer[]; act: Act }) {
+  const resume = useRef<HTMLButtonElement>(null);
+  const paused = view.paused !== null;
+  useEffect(() => {
+    if (paused) resume.current?.focus();
+  }, [paused]);
   if (!view.paused) return null;
   const by = view.paused.by;
   const name = players.find((p) => p.id === by)?.name ?? 'someone';
@@ -27,7 +33,7 @@ export function PauseCover({ view, players, act }: { view: GameView; players: Lo
     <div className="pause-cover" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <h2 id="pause-title">Paused by {name}</h2>
       <p className="muted">The music and the clock are on hold.</p>
-      <button type="button" className="btn primary pause-resume" onClick={() => act({ type: 'resume' })}>
+      <button ref={resume} type="button" className="btn primary pause-resume" onClick={() => act({ type: 'resume' })}>
         Resume
       </button>
     </div>
