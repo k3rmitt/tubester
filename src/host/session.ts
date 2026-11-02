@@ -68,6 +68,9 @@ export class HostSession {
   private audio: AudioState = 'stopped';
   private playingTrack: TrackId | null = null;
   private cancelCountdown: (() => void) | null = null;
+  private countdownEndsAt = 0;
+  /** What the audio was doing when the game was paused, and the countdown time left. */
+  private held: { prev: AudioState; countdownLeftMs: number | null } | null = null;
   private musicFailures = 0;
   private musicError: string | null = null;
 
@@ -138,7 +141,7 @@ export class HostSession {
 
   /** After repeated playback failures: try the current track again. */
   retryMusic(): void {
-    if (!this.runtime) return;
+    if (!this.runtime || this.runtime.paused) return;
     this.musicError = null;
     this.musicFailures = 0;
     this.playingTrack = null;
@@ -248,27 +251,70 @@ export class HostSession {
     this.broadcast();
   }
 
-  /** One track per turn: countdown, then play; stop at the reveal. */
+  /** One track per turn: countdown, then play; stop at the reveal. A pause holds all of it. */
   private syncAudio(state: GameState): void {
+    if (this.runtime?.paused) {
+      this.holdAudio();
+      return;
+    }
+    if (this.held) this.releaseAudio();
     const live = state.phase === 'deciding' || state.phase === 'stealWindow';
     const current = live ? (state.turn?.trackId ?? null) : null;
     if (current === this.playingTrack) return;
     this.stopMusic();
     this.playingTrack = current;
     if (current === null) return;
+    this.startCountdown(current, COUNTDOWN_MS);
+  }
+
+  private startCountdown(trackId: TrackId, ms: number): void {
     this.audio = 'countdown';
+    this.countdownEndsAt = this.now() + ms;
     this.cancelCountdown = this.deps.setTimer(() => {
       this.cancelCountdown = null;
-      if (this.playingTrack !== current) return;
+      if (this.playingTrack !== trackId) return;
       this.audio = 'playing';
-      this.deps.music.play(current).catch((e) => this.onMusicError(current, e instanceof Error ? e.message : String(e)));
+      this.deps.music.play(trackId).catch((e) => this.onMusicError(trackId, e instanceof Error ? e.message : String(e)));
       this.broadcast();
-    }, COUNTDOWN_MS);
+    }, ms);
+  }
+
+  private holdAudio(): void {
+    if (this.held) return;
+    let countdownLeftMs: number | null = null;
+    if (this.cancelCountdown) {
+      countdownLeftMs = Math.max(0, this.countdownEndsAt - this.now());
+      this.cancelCountdown();
+      this.cancelCountdown = null;
+    } else if (this.audio === 'playing') {
+      this.deps.music.pause().catch(() => undefined);
+    }
+    this.held = { prev: this.audio, countdownLeftMs };
+    this.audio = 'paused';
+  }
+
+  private releaseAudio(): void {
+    const held = this.held;
+    this.held = null;
+    if (!held) return;
+    if (held.countdownLeftMs !== null && this.playingTrack !== null) {
+      this.startCountdown(this.playingTrack, held.countdownLeftMs);
+    } else if (held.prev === 'playing') {
+      this.audio = 'playing';
+      this.deps.music.resume().catch(() => undefined);
+    } else {
+      this.audio = held.prev;
+    }
+  }
+
+  private now(): number {
+    return (this.deps.now ?? Date.now)();
   }
 
   private stopMusic(): void {
     this.cancelCountdown?.();
     this.cancelCountdown = null;
+    this.held = null;
     this.playingTrack = null;
     this.audio = 'stopped';
     this.deps.music.stop().catch(() => undefined);
