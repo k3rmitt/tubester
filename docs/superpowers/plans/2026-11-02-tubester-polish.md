@@ -602,3 +602,58 @@ Global Constraints and Review Focus above still apply. Extra Review Focus for th
   - Expect the end dialog with `WIN` on both pages.
   - Then run the first test unchanged. With 2 s windows it still passes, because early close only shortens waits.
 - [ ] **Step 5: Verify** with `npm run lint && npm run typecheck && npm test && npm run e2e`, plus a 360 px check of the steal screen with two slots selected. Commit with the message `feat(ui): pick several steal slots; end the game from the pause screen`.
+
+---
+
+## Addendum 2 tasks (spec sections 10–11)
+
+### Task 15: One answer per team: slots, a name or a pass (engine + runtime)
+
+**Files:** `src/engine/types.ts`, `src/engine/game.ts`, `src/engine/game.steal.test.ts`, `src/host/runtime.ts`, `src/host/runtime.test.ts`, `src/host/view.ts`, `src/host/view.test.ts`.
+
+**Interfaces:**
+- Produces:
+  - `Turn` gains `answered: TeamId[]` and `namedBy: TeamId[]`.
+  - The steal action becomes `{ type: 'steal'; teamId; slots: number[]; nameCorrect: boolean }`, and `slots` may be empty.
+  - `Outcome` gains `stealNameBonus: TeamId[]`.
+  - `TurnView` gains `answered: TeamId[]`. It does **not** include `namedBy`, which stays secret until the reveal.
+  - The guest intent `steal` is `{ slots: number[] (0–32), guess?: { title, artist } }`, and the legacy `{ slot }` is still accepted.
+  - Rejections: `'already answered this turn'`, `'invalid slot'`, `'not enough tokens'` (only when there are slots), `'slot taken'` (slots asked, none free; the team has not answered).
+
+- [ ] **Step 1: Failing tests.**
+  - Engine:
+    - a pass (no slots, no name) answers at no cost
+    - a 0-token team can answer with a name or a pass
+    - a second answer is refused
+    - the window closes when every other team has answered, and not before
+    - it no longer closes for "no free slot" or at lock-in when nobody has tokens; nor after a buy
+    - the stealers' name bonus is +1 for each correct namer, but only when the active team's name was wrong, and capped
+    - the bonus doesn't depend on winning the card
+    - a refused "slot taken" press leaves the team unanswered
+    - Update the Task 12 tests whose early close came from the removed rules.
+  - Runtime: a steal with a correct guess against the meta gives `nameCorrect: true`; a malformed guess is `'malformed intent'`; `{ slots: [] }` is accepted.
+  - View: `turn.answered` is exposed during the steal window, and no view contains `namedBy`.
+- [ ] **Step 2: Run them.** Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run `npm test && npm run typecheck`.** Expected: PASS. Commit with the message `feat(steal): every team answers once: slots, a name or a pass`.
+
+### Task 16: The steal screen names and passes; the reveal shows the stealers' name bonuses
+
+**Files:** `src/ui/PlayPanel.tsx`, `src/ui/text.ts` (+ test), `e2e/game.spec.ts`.
+
+**Interfaces:**
+- Produces: `export function nameBonusLine(view: GameView): string | null` in `text.ts`. Examples:
+  - "Vinyl named it: +1 token" (the active team)
+  - "Cassette named it: +1 token"
+  - "Cassette and Mixtape named it: +1 token each"
+  - It returns `null` when nobody earned a name bonus.
+
+- [ ] **Step 1: Failing test** for `nameBonusLine`. Watch it FAIL, implement it, watch it PASS. `Reveal` uses it instead of today's line.
+- [ ] **Step 2: `Steal` screen.**
+  - Title and artist fields, as in `MyTurn`.
+  - Slots can only be picked when tokens > 0.
+  - **TUBESTER!** is enabled until the team has answered (`turn.answered` includes my team) or the time is up. It sends `{ type: 'steal', slots, guess? }`.
+  - The hint reads "Pick slots (1 token each) and/or name the song, or press TUBESTER! to pass."
+  - After answering, it reads "Answer sent. Fingers crossed!", plus the taken-slots note when relevant.
+- [ ] **Step 3: e2e.** In the first test, a team in the steal window presses TUBESTER! with nothing selected (a pass). The loop must not depend on the window timing out.
+- [ ] **Step 4: Verify** with `npm run lint && npm run typecheck && npm test && npm run e2e`, plus a 360 px screenshot of the steal screen with the name fields. Commit with the message `feat(ui): name the song or pass during the steal window`.
