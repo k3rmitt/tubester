@@ -65,4 +65,9 @@ export class FakeMusicSource implements MusicSource {
   onError(cb: (e: PlaybackError) => void): void {
     this.errorCbs.push(cb);
   }
+
+  /** Simulates a playback error arriving later, as Spotify's can. */
+  emitError(trackId: string, message: string): void {
+    for (const cb of this.errorCbs) cb({ trackId, message });
+  }
 }

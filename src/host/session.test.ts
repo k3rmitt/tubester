@@ -402,4 +402,21 @@ describe('HostSession pause', () => {
     session.retryMusic();
     expect(session.snapshot().audio).toBe('paused');
   });
+
+  it('a playback failure while paused skips the track once resumed', () => {
+    const { session, join, timers, music } = setup();
+    join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    const first = music.played[0];
+    const seq = session.snapshot().view?.turn?.seq;
+    session.act({ type: 'pause' });
+    music.emitError(first, 'Spotify player is not responding');
+    expect(session.snapshot().view?.turn?.seq).toBe(seq);
+    session.act({ type: 'resume' });
+    expect(session.snapshot().audio).not.toBe('playing');
+    timers.fire(0);
+    expect(session.snapshot().view?.turn?.seq).not.toBe(seq);
+    expect(session.snapshot().audio).toBe('countdown');
+  });
 });

@@ -71,6 +71,8 @@ export class HostSession {
   private countdownEndsAt = 0;
   /** What the audio was doing when the game was paused, and the countdown time left. */
   private held: { prev: AudioState; countdownLeftMs: number | null } | null = null;
+  /** A playback error that arrived while paused; handled once the game resumes. */
+  private failedWhilePaused: { trackId: TrackId; message: string } | null = null;
   private musicFailures = 0;
   private musicError: string | null = null;
 
@@ -297,6 +299,14 @@ export class HostSession {
     const held = this.held;
     this.held = null;
     if (!held) return;
+    const failed = this.failedWhilePaused;
+    if (failed) {
+      this.failedWhilePaused = null;
+      this.audio = 'stopped';
+      // Outside this onChange call, so the skip doesn't re-enter the sync that is running now.
+      this.deps.setTimer(() => this.onMusicError(failed.trackId, failed.message), 0);
+      return;
+    }
     if (held.countdownLeftMs !== null && this.playingTrack !== null) {
       this.startCountdown(this.playingTrack, held.countdownLeftMs);
     } else if (held.prev === 'playing') {
@@ -315,6 +325,7 @@ export class HostSession {
     this.cancelCountdown?.();
     this.cancelCountdown = null;
     this.held = null;
+    this.failedWhilePaused = null;
     this.playingTrack = null;
     this.audio = 'stopped';
     this.deps.music.stop().catch(() => undefined);
@@ -322,6 +333,10 @@ export class HostSession {
 
   private onMusicError(trackId: TrackId, message: string): void {
     if (!this.runtime || this.playingTrack !== trackId) return;
+    if (this.runtime.paused) {
+      this.failedWhilePaused = { trackId, message };
+      return;
+    }
     this.musicFailures += 1;
     if (this.musicFailures >= MAX_MUSIC_FAILURES) {
       this.musicError = message;
