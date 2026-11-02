@@ -9,6 +9,11 @@ const resolved: ResolvedTrack[] = [
 ];
 
 describe('review model', () => {
+  it('keeps the album cover in game tracks', () => {
+    const rows = toReviewRows([{ ...resolved[1], cover: 'https://i.scdn.co/b.jpg' }]);
+    expect(gameTracks(rows)[0].cover).toBe('https://i.scdn.co/b.jpg');
+  });
+
   it('starts with every track included at its resolved year', () => {
     const rows = toReviewRows(resolved);
     expect(rows.map((r) => [r.id, r.include, r.chosenYear])).toEqual([

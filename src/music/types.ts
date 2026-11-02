@@ -5,6 +5,8 @@ export interface Track {
   isrc?: string;
   /** Year reported by the music source (often a remaster/compilation date). */
   sourceYear: number;
+  /** Album cover image URL, when the source has one. */
+  cover?: string;
 }
 
 export interface PlaylistSummary {

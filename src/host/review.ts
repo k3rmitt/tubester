@@ -35,5 +35,13 @@ export function reviewSummary(rows: ReviewRow[]): { total: number; toCheck: numb
 export function gameTracks(rows: ReviewRow[]): GameTrack[] {
   return rows
     .filter((r) => r.include)
-    .map((r) => ({ id: r.id, title: r.title, artists: [...r.artists], isrc: r.isrc, sourceYear: r.sourceYear, year: r.chosenYear }));
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      artists: [...r.artists],
+      isrc: r.isrc,
+      sourceYear: r.sourceYear,
+      year: r.chosenYear,
+      ...(r.cover ? { cover: r.cover } : {}),
+    }));
 }

@@ -102,7 +102,9 @@ export class HostSession {
     const teams = teamSetups(this.lobby);
     if (tracks.length < teams.length + 1) return { ok: false, reason: 'not enough tracks' };
 
-    this.meta = Object.fromEntries(tracks.map((t) => [t.id, { title: t.title, artists: [...t.artists] }]));
+    this.meta = Object.fromEntries(
+      tracks.map((t) => [t.id, { title: t.title, artists: [...t.artists], ...(t.cover ? { cover: t.cover } : {}) }]),
+    );
     const years = Object.fromEntries(tracks.map((t) => [t.id, t.year ?? t.sourceYear]));
     const deck = shuffle(
       tracks.map((t) => t.id),

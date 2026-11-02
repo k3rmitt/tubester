@@ -28,8 +28,17 @@ interface ApiTrack {
   name?: string;
   is_local?: boolean;
   artists?: { name?: string }[];
-  album?: { release_date?: string };
+  album?: { release_date?: string; images?: { url?: string; width?: number | null }[] };
   external_ids?: { isrc?: string };
+}
+
+/** The smallest image at least 300 px wide, else the largest one. */
+export function pickCover(images: { url?: string; width?: number | null }[] | undefined): string | undefined {
+  const usable = (images ?? []).filter((i): i is { url: string; width?: number | null } => typeof i.url === 'string' && i.url !== '');
+  if (usable.length === 0) return undefined;
+  const width = (i: { width?: number | null }) => i.width ?? 0;
+  const big = usable.filter((i) => width(i) >= 300).sort((a, b) => width(a) - width(b));
+  return (big[0] ?? usable.sort((a, b) => width(b) - width(a))[0]).url;
 }
 
 export class SpotifyApi {
@@ -72,6 +81,7 @@ export class SpotifyApi {
         artists: (t.artists ?? []).map((a) => a.name ?? '').filter(Boolean),
         isrc: t.external_ids?.isrc,
         sourceYear: year,
+        cover: pickCover(t.album?.images),
       });
     }
     return out;

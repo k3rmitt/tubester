@@ -163,6 +163,20 @@ describe('HostSession game', () => {
     expect(wire).not.toContain(current.id);
   });
 
+  it('shows covers on timeline cards but never the current track cover before the reveal', () => {
+    const { session, join, timers, music } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS.map((t) => ({ ...t, cover: `https://img/${t.id}.jpg` })));
+    timers.fire(COUNTDOWN_MS);
+    const current = music.played[0];
+    const last = lea.last();
+    if (last?.t !== 'state') throw new Error('no state');
+    const cards = last.view.teams.flatMap((t) => t.timeline);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const c of cards) expect(c.cover).toBe(`https://img/${c.trackId}.jpg`);
+    expect(JSON.stringify(lea.received)).not.toContain(`https://img/${current}.jpg`);
+  });
+
   it('routes intents and reports rejections to the sender', () => {
     const { session, join } = setup();
     const lea = join('p1', 'Léa');

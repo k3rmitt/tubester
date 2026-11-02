@@ -3,6 +3,7 @@ import type { GameState, Outcome, Phase, Settings, Steal, TeamId, TrackId } from
 export interface TrackMeta {
   title: string;
   artists: string[];
+  cover?: string;
 }
 
 export interface CardView {
@@ -10,6 +11,7 @@ export interface CardView {
   year: number;
   title: string;
   artists: string[];
+  cover?: string;
 }
 
 export interface TeamView {
@@ -32,6 +34,7 @@ export interface RevealView {
   trackId: TrackId;
   title: string;
   artists: string[];
+  cover?: string;
   year: number;
   outcome: Outcome;
 }
