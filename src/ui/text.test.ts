@@ -10,7 +10,7 @@ const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot
     g,
     { type: 'place', teamId: 'B', slot },
     { type: 'lockIn', teamId: 'B', nameCorrect: false },
-    ...steals.map((s) => ({ type: 'steal' as const, ...s })),
+    ...steals.map((s) => ({ type: 'steal' as const, teamId: s.teamId, slots: [s.slot] })),
     { type: 'closeSteals' },
   );
 

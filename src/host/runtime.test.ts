@@ -79,9 +79,8 @@ describe('HostRuntime', () => {
     rt.handleIntent('p2', { type: 'lockIn' });
     expect(rt.state.phase).toBe('stealWindow');
     expect(pending()).toEqual([5000]);
-    expect(rt.handleIntent('p3', { type: 'steal', slot: 0 })).toEqual({ ok: true });
-    fire();
-    expect(rt.state.phase).toBe('reveal');
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('reveal'); // no free slot left: the window closed early
     expect(pending()).toEqual([5000]);
     fire();
     expect(rt.state.phase).toBe('deciding');
@@ -308,5 +307,39 @@ describe('HostRuntime pause', () => {
     const rt = new HostRuntime(newGame(), PLAYERS, deps);
     expect(rt.handleIntent('nobody', { type: 'pause' })).toEqual({ ok: false, reason: 'unknown player' });
     expect(rt.paused).toBeNull();
+  });
+});
+
+describe('HostRuntime steals', () => {
+  it('accepts several slots and the legacy single slot', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
+    expect(rt.handleIntent('p1', { type: 'steal', slot: 0 })).toEqual({ ok: false, reason: 'no steal window open' });
+  });
+
+  it.each([{ slots: 'x' }, { slots: [] }, { slots: Array.from({ length: 33 }, (_, i) => i) }, { slots: [0, 'a'] }])(
+    'rejects malformed slots %j',
+    (extra) => {
+      const { deps } = fakeDeps();
+      const rt = new HostRuntime(newGame(), PLAYERS, deps);
+      rt.handleIntent('p2', { type: 'place', slot: 1 });
+      rt.handleIntent('p2', { type: 'lockIn' });
+      expect(rt.handleIntent('p3', { type: 'steal', ...extra })).toEqual({ ok: false, reason: 'malformed intent' });
+    },
+  );
+
+  it('swaps the steal timer for the reveal timer when the window closes early', () => {
+    const { deps, pending } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    expect(pending()).toEqual([5000]);
+    rt.handleIntent('p3', { type: 'steal', slots: [0] });
+    expect(rt.state.phase).toBe('reveal');
+    expect(pending()).toEqual([5000]);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(5000);
   });
 });

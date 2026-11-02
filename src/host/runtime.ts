@@ -7,7 +7,7 @@ export type GuestIntent =
   | { type: 'place'; slot: number }
   | { type: 'skip' }
   | { type: 'lockIn'; guess?: Guess }
-  | { type: 'steal'; slot: number }
+  | { type: 'steal'; slots: number[] }
   | { type: 'buy' }
   | { type: 'pause' }
   | { type: 'resume' };
@@ -27,6 +27,7 @@ export interface RuntimeDeps {
 }
 
 const MAX_GUESS_LENGTH = 200;
+const MAX_STEAL_SLOTS = 32;
 
 /** Guests are remote and untrusted: rebuild the intent from known fields only. */
 function parseIntent(raw: unknown): GuestIntent | null {
@@ -34,8 +35,14 @@ function parseIntent(raw: unknown): GuestIntent | null {
   const r = raw as Record<string, unknown>;
   switch (r.type) {
     case 'place':
-    case 'steal':
-      return typeof r.slot === 'number' ? { type: r.type, slot: r.slot } : null;
+      return typeof r.slot === 'number' ? { type: 'place', slot: r.slot } : null;
+    case 'steal': {
+      if (typeof r.slot === 'number') return { type: 'steal', slots: [r.slot] }; // older clients
+      const slots = r.slots;
+      if (!Array.isArray(slots) || slots.length === 0 || slots.length > MAX_STEAL_SLOTS) return null;
+      if (!slots.every((x) => typeof x === 'number')) return null;
+      return { type: 'steal', slots: [...slots] };
+    }
     case 'skip':
     case 'buy':
     case 'pause':
@@ -165,7 +172,7 @@ export class HostRuntime {
       case 'skip':
         return { type: 'skip', teamId };
       case 'steal':
-        return { type: 'steal', teamId, slot: intent.slot };
+        return { type: 'steal', teamId, slots: intent.slots };
       case 'buy':
         return { type: 'buy', teamId };
       case 'lockIn':

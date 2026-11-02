@@ -159,7 +159,7 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
           className="btn tubester"
           disabled={!canPress}
           onClick={() => {
-            if (picked !== null) act({ type: 'steal', slot: picked });
+            if (picked !== null) act({ type: 'steal', slots: [picked] });
           }}
         >
           TUBESTER!

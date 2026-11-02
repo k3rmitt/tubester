@@ -74,7 +74,7 @@ export type Action =
   | { type: 'lockIn'; teamId: TeamId; nameCorrect: boolean }
   | { type: 'trackFailed' }
   | { type: 'passTurn' }
-  | { type: 'steal'; teamId: TeamId; slot: number }
+  | { type: 'steal'; teamId: TeamId; slots: number[] }
   | { type: 'closeSteals' }
   | { type: 'nextTurn' }
   | { type: 'buy'; teamId: TeamId };
