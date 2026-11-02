@@ -93,6 +93,11 @@ export class SpotifyApi {
     });
   }
 
+  /** Resumes the device's current track at its position (play without a body). */
+  async resume(deviceId: string): Promise<void> {
+    await this.request('PUT', `/me/player/play?device_id=${encodeURIComponent(deviceId)}`);
+  }
+
   async pause(deviceId: string): Promise<void> {
     await this.request('PUT', `/me/player/pause?device_id=${encodeURIComponent(deviceId)}`);
   }

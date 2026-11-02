@@ -8,7 +8,7 @@ export interface SdkPlayer {
   addListener(event: string, cb: (payload: unknown) => void): boolean;
 }
 
-export type SpotifyApiLike = Pick<SpotifyApi, 'listPlaylists' | 'loadPlaylist' | 'play' | 'pause'>;
+export type SpotifyApiLike = Pick<SpotifyApi, 'listPlaylists' | 'loadPlaylist' | 'play' | 'pause' | 'resume'>;
 
 export const PREMIUM_REQUIRED = 'Spotify Premium is required to host';
 
@@ -23,6 +23,7 @@ export class SpotifyMusicSource implements MusicSource {
   private deviceId: string | null = null;
   private fatal: Error | null = null;
   private current: string | null = null;
+  private paused = false;
   private disposed = false;
   private waiters: { resolve: () => void; reject: (e: Error) => void }[] = [];
   private readonly errorCbs: ((e: PlaybackError) => void)[] = [];
@@ -98,10 +99,13 @@ export class SpotifyMusicSource implements MusicSource {
 
   async play(trackId: string): Promise<void> {
     this.current = trackId;
+    this.paused = false;
     try {
       await this.readyWithin(this.readyTimeoutMs);
       if (this.current !== trackId || !this.deviceId) return;
       await this.api.play(this.deviceId, trackId);
+      // Paused while the play request was in flight: Spotify started anyway, so pause again.
+      if (this.paused && this.current === trackId) await this.api.pause(this.deviceId).catch(() => undefined);
     } catch (e) {
       if (this.current === trackId) this.emit(trackId, e instanceof Error ? e.message : String(e));
     }
@@ -109,8 +113,24 @@ export class SpotifyMusicSource implements MusicSource {
 
   async stop(): Promise<void> {
     this.current = null;
+    this.paused = false;
     if (!this.deviceId) return;
     await this.api.pause(this.deviceId).catch(() => undefined);
+  }
+
+  async pause(): Promise<void> {
+    if (this.current === null) return;
+    this.paused = true;
+    if (!this.deviceId) return;
+    await this.api.pause(this.deviceId).catch(() => undefined);
+  }
+
+  async resume(): Promise<void> {
+    if (this.current === null || !this.deviceId) return;
+    this.paused = false;
+    await this.api.resume(this.deviceId).catch((e) => {
+      if (this.current) this.emit(this.current, e instanceof Error ? e.message : String(e));
+    });
   }
 
   onError(cb: (e: PlaybackError) => void): void {

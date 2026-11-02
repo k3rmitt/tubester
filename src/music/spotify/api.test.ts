@@ -117,6 +117,17 @@ describe('album covers', () => {
   });
 });
 
+describe('SpotifyApi.resume', () => {
+  it('resumes the device without a body (keeps the position)', async () => {
+    const { api, calls } = setup([{ status: 204 }]);
+    await api.resume('dev');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('https://api.spotify.com/v1/me/player/play?device_id=dev');
+    expect(calls[0].init?.method).toBe('PUT');
+    expect(calls[0].init?.body).toBeUndefined();
+  });
+});
+
 describe('SpotifyApi requests', () => {
   it('refreshes once on a 401 and retries', async () => {
     const { api, calls, refreshes } = setup([{ status: 401 }, { status: 200, body: { id: 'me' } }]);

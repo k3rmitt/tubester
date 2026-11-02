@@ -27,14 +27,19 @@ function fakePlayer(connectResult = true) {
   };
 }
 
-function fakeApi(failPlay = false) {
+function fakeApi(failPlay = false, holdPlay: Promise<void> | null = null) {
   const calls: string[] = [];
   const api: SpotifyApiLike = {
     listPlaylists: async () => [],
     loadPlaylist: async () => [],
     play: async (device, track) => {
       calls.push(`play ${device} ${track}`);
+      if (holdPlay) await holdPlay;
+      calls.push(`played ${track}`);
       if (failPlay) throw new Error('Restriction violated');
+    },
+    resume: async (device) => {
+      calls.push(`resume ${device}`);
     },
     pause: async (device) => {
       calls.push(`pause ${device}`);
@@ -71,7 +76,7 @@ describe('SpotifyMusicSource', () => {
     expect(calls).toEqual([]);
     p.emit('ready', { device_id: 'dev1' });
     await playing;
-    expect(calls).toEqual(['play dev1 t1']);
+    expect(calls).toEqual(['play dev1 t1', 'played t1']);
   });
 
   it('reports a missing Premium subscription', async () => {
@@ -124,5 +129,49 @@ describe('SpotifyMusicSource', () => {
     await src.activate();
     src.dispose();
     expect([p.activated(), p.disconnected()]).toEqual([1, 1]);
+  });
+
+  it('pauses and resumes the current track on the device', async () => {
+    const p = fakePlayer();
+    const { api, calls } = fakeApi();
+    const src = new SpotifyMusicSource(api, async () => p.player);
+    await src.connect();
+    p.emit('ready', { device_id: 'dev1' });
+    await src.resume();
+    await src.play('t1');
+    await src.pause();
+    await src.resume();
+    expect(calls).toEqual(['play dev1 t1', 'played t1', 'pause dev1', 'resume dev1']);
+  });
+
+  it('pause during an in-flight play pauses once play lands', async () => {
+    const p = fakePlayer();
+    let land: () => void = () => undefined;
+    const hold = new Promise<void>((r) => {
+      land = r;
+    });
+    const { api, calls } = fakeApi(false, hold);
+    const src = new SpotifyMusicSource(api, async () => p.player);
+    await src.connect();
+    p.emit('ready', { device_id: 'dev1' });
+    const playing = src.play('t1');
+    await Promise.resolve();
+    await src.pause();
+    land();
+    await playing;
+    expect(calls.slice(-2)).toEqual(['played t1', 'pause dev1']);
+  });
+
+  it('stop forgets a pause so the next track plays normally', async () => {
+    const p = fakePlayer();
+    const { api, calls } = fakeApi();
+    const src = new SpotifyMusicSource(api, async () => p.player);
+    await src.connect();
+    p.emit('ready', { device_id: 'dev1' });
+    await src.play('t1');
+    await src.pause();
+    await src.stop();
+    await src.play('t2');
+    expect(calls.slice(-2)).toEqual(['play dev1 t2', 'played t2']);
   });
 });

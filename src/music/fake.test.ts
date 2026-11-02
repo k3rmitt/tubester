@@ -67,3 +67,25 @@ describe('FakeMusicSource', () => {
     expect(calls).toEqual([`start ${freqFor('demo-06')}`]);
   });
 });
+
+describe('FakeMusicSource pause', () => {
+  it('stops the tone on pause and restarts the same pitch on resume', async () => {
+    const { tone, calls } = recorder();
+    const src = new FakeMusicSource(tone);
+    await src.resume();
+    expect(calls).toEqual([]);
+    await src.play('demo-01');
+    await src.pause();
+    await src.resume();
+    expect(calls).toEqual([`start ${freqFor('demo-01')}`, 'stop', `start ${freqFor('demo-01')}`]);
+  });
+
+  it('does not resume after stop', async () => {
+    const { tone, calls } = recorder();
+    const src = new FakeMusicSource(tone);
+    await src.play('demo-01');
+    await src.stop();
+    await src.resume();
+    expect(calls).toEqual([`start ${freqFor('demo-01')}`, 'stop']);
+  });
+});

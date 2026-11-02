@@ -20,6 +20,7 @@ export class FakeMusicSource implements MusicSource {
   readonly played: string[] = [];
   failNext = false;
   private readonly errorCbs: ((e: PlaybackError) => void)[] = [];
+  private frequency: number | null = null;
 
   constructor(
     private readonly tone: ToneOutput,
@@ -44,11 +45,21 @@ export class FakeMusicSource implements MusicSource {
       return;
     }
     this.played.push(trackId);
-    this.tone.start(freqFor(trackId));
+    this.frequency = freqFor(trackId);
+    this.tone.start(this.frequency);
   }
 
   async stop(): Promise<void> {
+    this.frequency = null;
     this.tone.stop();
+  }
+
+  async pause(): Promise<void> {
+    this.tone.stop();
+  }
+
+  async resume(): Promise<void> {
+    if (this.frequency !== null) this.tone.start(this.frequency);
   }
 
   onError(cb: (e: PlaybackError) => void): void {

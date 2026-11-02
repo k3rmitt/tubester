@@ -26,5 +26,9 @@ export interface MusicSource {
   ready(): Promise<void>;
   play(trackId: string): Promise<void>;
   stop(): Promise<void>;
+  /** Pause the current track, keeping its position. */
+  pause(): Promise<void>;
+  /** Continue the paused track from where it stopped. */
+  resume(): Promise<void>;
   onError(cb: (e: PlaybackError) => void): void;
 }
