@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { CardView, GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
 import { slotLabel, teamById } from './text';
@@ -51,10 +51,43 @@ export function Disc({ size = 64 }: { size?: number }) {
   );
 }
 
+/** Album cover, or a plain record sleeve when there is none or it fails to load. */
+export function Cover({ url, size, label }: { url?: string; size: number; label: string }) {
+  const [failed, setFailed] = useState(false);
+  const style = { width: size, height: size };
+  if (!url || failed) {
+    return (
+      <span className="cover placeholder" style={style} role="img" aria-label={label}>
+        <Disc size={Math.round(size * 0.6)} />
+      </span>
+    );
+  }
+  return (
+    <img
+      className="cover"
+      style={style}
+      src={url}
+      alt={label}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Stands in for the cover of the song being played: it stays secret until the reveal. */
+export function MysterySleeve({ size = 64 }: { size?: number }) {
+  return (
+    <span className="cover mystery" style={{ width: size, height: size, fontSize: size * 0.55 }} aria-hidden="true">
+      ?
+    </span>
+  );
+}
+
 export function NowPlaying({ label, audio }: { label: string; audio: AudioState }) {
   return (
     <div className="panel now">
-      <Disc />
+      <MysterySleeve />
       <div className="rows">
         <span className="kicker">{label}</span>
         <strong className="headline">Mystery track</strong>
@@ -118,6 +151,7 @@ export function Timeline({
     if (card) {
       items.push(
         <div key={card.trackId} className="card">
+          <Cover url={card.cover} size={44} label={`${card.title} cover`} />
           <span className="year">{card.year}</span>
           <span className="meta">
             <span className="title">{card.title}</span>

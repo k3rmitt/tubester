@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
-import { NowPlaying, Scores, type SlotProps, Timeline } from './components';
+import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
 import { revealHeadline, teamById, winnersHeadline } from './text';
 
 export interface PlayPanelProps {
@@ -204,6 +204,7 @@ function Reveal({ view }: { view: GameView }) {
   return (
     <section className="rows">
       <div className="reveal">
+        <Cover url={r.cover} size={150} label={`${r.title} cover`} />
         <span className="kicker">It was</span>
         <span className="big-year">{r.year}</span>
         <span className="song">{r.title}</span>

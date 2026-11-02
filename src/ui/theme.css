@@ -111,3 +111,9 @@ table.review { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.review th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 table.review td { padding: 8px 10px; border-bottom: 1px solid #22262f; }
 table.review td.warn { color: var(--steal-text); font-weight: 600; }
+
+.cover { flex: none; display: block; border-radius: 8px; object-fit: cover; background: var(--surface); }
+.cover.placeholder { display: inline-flex; align-items: center; justify-content: center; background: #15171d; border: 1px solid var(--line); }
+.cover.mystery { display: inline-flex; align-items: center; justify-content: center; background: #232733; border: 1px dashed var(--line-strong); color: var(--line-strong); font-family: var(--display); font-weight: 700; line-height: 1; }
+.reveal .cover { width: 150px; height: 150px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); margin-bottom: 6px; }
+.reveal .cover.placeholder { background: var(--bg); border-color: var(--bg); }
