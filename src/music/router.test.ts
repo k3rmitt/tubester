@@ -36,4 +36,19 @@ describe('MusicRouter', () => {
     await b.play('demo-02');
     expect(errors).toEqual([{ trackId: 'demo-02', message: 'simulated failure' }]);
   });
+
+  it('pauses and resumes the active source', async () => {
+    const a = new FakeMusicSource(silent);
+    const calls: string[] = [];
+    a.pause = async () => {
+      calls.push('pause');
+    };
+    a.resume = async () => {
+      calls.push('resume');
+    };
+    const router = new MusicRouter(a);
+    await router.pause();
+    await router.resume();
+    expect(calls).toEqual(['pause', 'resume']);
+  });
 });

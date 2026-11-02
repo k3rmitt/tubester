@@ -1,7 +1,7 @@
 import type { Lobby } from '../host/lobby';
 import type { GameView } from '../host/view';
 
-export type AudioState = 'countdown' | 'playing' | 'stopped';
+export type AudioState = 'countdown' | 'playing' | 'paused' | 'stopped';
 
 export type GuestToHost =
   | { t: 'hello'; playerId: string; secret: string; name: string }

@@ -38,6 +38,14 @@ export class MusicRouter implements MusicSource {
     return this.current.stop();
   }
 
+  pause(): Promise<void> {
+    return this.current.pause();
+  }
+
+  resume(): Promise<void> {
+    return this.current.resume();
+  }
+
   onError(cb: (e: PlaybackError) => void): void {
     this.errorCbs.push(cb);
   }

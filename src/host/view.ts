@@ -3,6 +3,7 @@ import type { GameState, Outcome, Phase, Settings, Steal, TeamId, TrackId } from
 export interface TrackMeta {
   title: string;
   artists: string[];
+  cover?: string;
 }
 
 export interface CardView {
@@ -10,6 +11,7 @@ export interface CardView {
   year: number;
   title: string;
   artists: string[];
+  cover?: string;
 }
 
 export interface TeamView {
@@ -24,6 +26,8 @@ export interface TurnView {
   teamId: TeamId;
   slot: number | null;
   steals: Steal[];
+  /** Teams that answered the steal window (slots, a name or a pass). */
+  answered: TeamId[];
   /** Changes whenever a new track comes into play (new turn, skip, failed track). */
   seq: string;
 }
@@ -32,6 +36,7 @@ export interface RevealView {
   trackId: TrackId;
   title: string;
   artists: string[];
+  cover?: string;
   year: number;
   outcome: Outcome;
 }
@@ -46,6 +51,10 @@ export interface GameView {
   deckRemaining: number;
   winnerIds: TeamId[];
   viewerTeamId: TeamId | null;
+  /** Set while the game is paused; `by` is the player id who paused. */
+  paused: { by: string } | null;
+  /** Time left on the steal or reveal timer when this view was built (frozen while paused). */
+  timerLeftMs: number | null;
 }
 
 const UNKNOWN: TrackMeta = { title: 'Unknown', artists: [] };
@@ -71,6 +80,7 @@ export function toView(state: GameState, meta: Record<TrackId, TrackMeta>, viewe
           teamId: state.turn.teamId,
           slot: state.turn.slot,
           steals: state.turn.steals.map((s) => ({ ...s })),
+          answered: [...state.turn.answered],
           seq: `${state.turnIndex}-${state.discard.length}`,
         }
       : null,
@@ -81,5 +91,7 @@ export function toView(state: GameState, meta: Record<TrackId, TrackMeta>, viewe
     deckRemaining: state.deck.length,
     winnerIds: [...state.winnerIds],
     viewerTeamId,
+    paused: null,
+    timerLeftMs: null,
   };
 }

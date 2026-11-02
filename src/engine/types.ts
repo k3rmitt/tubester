@@ -43,6 +43,10 @@ export interface Turn {
   nameCorrect: boolean;
   /** In arrival order at the host. */
   steals: Steal[];
+  /** Teams that answered the steal window (slots, a name or a pass), in arrival order. */
+  answered: TeamId[];
+  /** Stealing teams whose name guess was right; secret until the reveal. */
+  namedBy: TeamId[];
 }
 
 export interface Outcome {
@@ -51,6 +55,8 @@ export interface Outcome {
   activeCorrect: boolean;
   cardWonBy: TeamId | null;
   nameBonus: boolean;
+  /** Stealing teams that named the song (only when the active team did not). */
+  stealNameBonus: TeamId[];
 }
 
 export interface GameState {
@@ -74,9 +80,10 @@ export type Action =
   | { type: 'lockIn'; teamId: TeamId; nameCorrect: boolean }
   | { type: 'trackFailed' }
   | { type: 'passTurn' }
-  | { type: 'steal'; teamId: TeamId; slot: number }
+  | { type: 'steal'; teamId: TeamId; slots: number[]; nameCorrect?: boolean }
   | { type: 'closeSteals' }
   | { type: 'nextTurn' }
-  | { type: 'buy'; teamId: TeamId };
+  | { type: 'buy'; teamId: TeamId }
+  | { type: 'endGame' };
 
 export type Result = { ok: true; state: GameState } | { ok: false; reason: string };

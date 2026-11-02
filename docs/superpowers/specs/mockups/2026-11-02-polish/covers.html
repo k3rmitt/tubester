@@ -1,0 +1,67 @@
+<style>
+  .ph { width: 300px; background:#0F1115; border-radius:22px; padding:14px; font-family: Inter, system-ui, sans-serif; color:#F2F0EA; margin: 0 auto; }
+  .ph h4 { font-family:'Space Grotesk',system-ui; margin:0 0 10px; font-size:15px; color:#F2F0EA; }
+  .stack { display:flex; flex-direction:column; gap:6px; }
+  .cd { display:flex; gap:10px; align-items:center; background:#1A1D24; border:1px solid #2A2E37; border-radius:12px; padding:8px; }
+  .cd b { font-family:'Space Grotesk',system-ui; font-size:20px; min-width:48px; }
+  .cd small { display:block; font-size:12px; color:#9AA0AC; }
+  .art { width:44px; height:44px; border-radius:8px; flex:none; }
+  .a1 { background: linear-gradient(135deg,#e96443,#904e95); }
+  .a2 { background: linear-gradient(135deg,#1fa2ff,#12d8fa,#a6ffcb); }
+  .a3 { background: linear-gradient(135deg,#f7971e,#ffd200); }
+  .sa { min-height:44px; border:2px solid #FFD23F; border-radius:12px; color:#FFD23F; font-size:13px; font-weight:600; display:flex; align-items:center; gap:10px; padding:0 12px; background:rgba(255,210,63,.08); }
+  .sa i { font-style:normal; width:24px; height:24px; border-radius:50%; background:#FFD23F; color:#0F1115; display:flex; align-items:center; justify-content:center; font-weight:800; }
+  .bgcd { position:relative; overflow:hidden; border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center; border:1px solid #2A2E37; }
+  .bgcd::before { content:''; position:absolute; inset:0; background:inherit; filter: blur(0); }
+  .bgcd .shade { position:absolute; inset:0; background:linear-gradient(90deg, rgba(15,17,21,.92) 40%, rgba(15,17,21,.55)); }
+  .bgcd > div:not(.shade) { position:relative; }
+  .bgcd b { font-family:'Space Grotesk'; font-size:20px; min-width:48px; position:relative; }
+  .bgcd small { display:block; font-size:12px; color:#C9CDD5; }
+  .reveal { background:#1A1D24; border:1px solid #2A2E37; border-radius:16px; padding:14px; text-align:center; margin-bottom:10px; }
+  .reveal .big { width:150px; height:150px; border-radius:12px; margin:0 auto 10px; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .reveal b { font-family:'Space Grotesk'; font-size:34px; color:#FFD23F; display:block; }
+  .mystery { background:#1A1D24; border:1px dashed #3A3F4A; border-radius:16px; padding:14px; text-align:center; margin-bottom:10px; }
+  .mystery .big { width:120px; height:120px; border-radius:12px; margin:0 auto 8px; background:#232733; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-size:48px; color:#3A3F4A; }
+</style>
+
+<h2>Album covers: where do they go?</h2>
+<p class="subtitle">One rule either way: the cover of the song being played stays hidden until the reveal, or it would give the answer away. Placeholder colours stand in for real covers.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>Your timeline</h4>
+      <div class="stack">
+        <div class="sa"><i>+</i>Before 1977</div>
+        <div class="cd"><div class="art a1"></div><b>1977</b><div>Dancing Queen<small>ABBA</small></div></div>
+        <div class="sa"><i>+</i>Between 1977 and 1999</div>
+        <div class="cd"><div class="art a2"></div><b>1999</b><div>No Scrubs<small>TLC</small></div></div>
+        <div class="sa"><i>+</i>After 1999</div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>A · Thumbnail on every card</h3><p>Small square cover at the left of each timeline card. Clean, easy to scan.</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>Your timeline</h4>
+      <div class="stack">
+        <div class="sa"><i>+</i>Before 1977</div>
+        <div class="bgcd a1"><div class="shade"></div><b>1977</b><div>Dancing Queen<small>ABBA</small></div></div>
+        <div class="sa"><i>+</i>Between 1977 and 1999</div>
+        <div class="bgcd a2"><div class="shade"></div><b>1999</b><div>No Scrubs<small>TLC</small></div></div>
+        <div class="sa"><i>+</i>After 1999</div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>B · Cover as card background</h3><p>The cover fills the card, darkened under the text. Most colourful, a bit busier.</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>While playing → at the reveal</h4>
+      <div class="mystery"><div class="big">?</div><small style="color:#9AA0AC">Now playing</small></div>
+      <div class="reveal"><div class="big a3"></div><b>1984</b>Like a Virgin<br><small style="color:#9AA0AC">Madonna</small></div>
+    </div></div>
+    <div class="card-body"><h3>C · Big cover at the reveal</h3><p>A "?" sleeve while the song plays, then the real cover flips in large at the reveal. Can be combined with A or B.</p></div>
+  </div>
+</div>

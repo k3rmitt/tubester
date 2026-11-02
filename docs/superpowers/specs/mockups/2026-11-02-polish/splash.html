@@ -1,0 +1,98 @@
+<style>
+  .stage { width:300px; height:420px; margin:0 auto; background:radial-gradient(circle at 50% 48%, #1A1D24 0%, #0F1115 70%); border-radius:22px; position:relative; overflow:hidden; font-family:'Space Grotesk', system-ui, sans-serif; }
+  .vinyl { width:150px; height:150px; border-radius:50%; position:absolute; left:50%; top:200px; margin:-75px 0 0 -75px;
+    background: radial-gradient(circle, #FFD23F 0 17%, #0F1115 17.5% 19%, transparent 19.5%), repeating-radial-gradient(circle, #16181d 0 2px, #22252c 2px 3px);
+    box-shadow: 0 0 0 2px #2A2E37, 0 12px 40px rgba(0,0,0,.6); animation: spin 1.6s linear infinite; }
+  .vinyl::after { content:''; position:absolute; inset:0; border-radius:50%; background:linear-gradient(120deg, transparent 35%, rgba(255,255,255,.12) 50%, transparent 65%); }
+  .vinyl .hole { position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#0F1115; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .w { position:absolute; left:0; right:0; top:200px; margin-top:-24px; line-height:48px; text-align:center; font-weight:700; font-size:40px; letter-spacing:.04em; }
+  .w.tube { color:#F2F0EA; animation: dive-top 1s .2s ease-in both; }
+  .w.ster { color:#FFD23F; animation: dive-bottom 1s .5s ease-in both; }
+  @keyframes dive-top { 0% { transform:translateY(-260px); opacity:0;} 40% {opacity:1;} 100% { transform:scale(.1); opacity:0; } }
+  @keyframes dive-bottom { 0% { transform:translateY(260px); opacity:0;} 40% {opacity:1;} 100% { transform:scale(.1); opacity:0; } }
+  .mark { color:#F2F0EA; opacity:0; }
+  .mark em { font-style:normal; color:#FFD23F; }
+  .mark span { display:inline-block; background:#0F1115; padding:2px 12px; border-radius:10px; }
+  .tag { position:absolute; bottom:22px; left:0; right:0; text-align:center; font-family:Inter, system-ui; font-size:12px; color:#9AA0AC; opacity:0; animation: fade .5s 2.3s forwards; }
+  @keyframes fade { to { opacity:1; } }
+
+  /* a: soft pop */
+  .va .mark { animation: pop .45s 1.5s cubic-bezier(.2,1.5,.4,1) forwards; }
+  @keyframes pop { from { opacity:0; transform:scale(.4); } to { opacity:1; transform:scale(1); } }
+
+  /* b: opens out from the centre of the record */
+  .vb .mark { opacity:1; clip-path: inset(0 50% 0 50%); animation: open .6s 1.5s ease-out forwards; }
+  @keyframes open { to { clip-path: inset(0 0 0 0); } }
+
+  /* c: record slows to a stop, name rises underneath */
+  .vc .vinyl { animation: spin 1.6s linear 1, spin-out 1.4s 1.6s cubic-bezier(.1,.6,.3,1) forwards; }
+  @keyframes spin-out { from { transform: rotate(0); } to { transform: rotate(200deg); } }
+  .vc .mark { top:322px; animation: rise .5s 1.7s ease-out forwards; }
+  .vc .mark span { background:none; }
+  .vc .tag { bottom:16px; }
+  @keyframes rise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+  .va .mark span { padding:4px 14px; }
+  .b1 .mark span { box-shadow: 0 0 0 2px #FFD23F; border-radius:12px; }
+  .b2 .mark span { position:relative; border-radius:0; }
+  .b2 .mark svg { position:absolute; inset:-4px; width:calc(100% + 8px); height:calc(100% + 8px); overflow:visible; }
+  .b2 .mark rect { fill:none; stroke:#FFD23F; stroke-width:2; stroke-dasharray:1; stroke-dashoffset:1; animation: draw .8s 2s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  .b3 .mark span { border-radius:4px; border:2px solid #F2F0EA; box-shadow: inset 0 0 0 3px #0F1115, inset 0 0 0 5px #FFD23F; padding:8px 16px; }
+  
+  .sp .w.tube, .sp .w.ster { left:50%; right:auto; width:200px; margin-left:-100px; transform-origin:50% 50%; }
+  .s1 .w.tube { animation: s1t 1.3s .2s cubic-bezier(.3,.1,.6,1) both; }
+  .s1 .w.ster { animation: s1s 1.3s .2s cubic-bezier(.3,.1,.6,1) both; }
+  .s2 .w.tube { animation: s2t 1.3s .2s cubic-bezier(.3,.1,.6,1) both; }
+  .s2 .w.ster { animation: s2s 1.3s .2s cubic-bezier(.3,.1,.6,1) both; }
+  .s3 .w.tube { animation: s3t 1.8s .2s cubic-bezier(.2,0,.5,1) both; }
+  .s3 .w.ster { animation: s3s 1.8s .45s cubic-bezier(.2,0,.5,1) both; }
+  .s3 .vinyl { animation: spin 1.6s linear .2s 1, spin .5s linear 1.8s infinite; }
+  .sp .mark { animation-delay: 1.6s; }
+  .s3 .mark { animation-delay: 2.15s; }
+  .s3 .mark rect { animation-delay: 2.65s; }
+  .sp .mark rect { animation-delay: 2.1s; }
+@keyframes s1t { 0.0% { transform: rotate(0.0deg) translateY(-190.0px) scale(1.00); opacity:0.00; } 12.5% { transform: rotate(67.5deg) translateY(-161.9px) scale(0.89); opacity:1.00; } 25.0% { transform: rotate(135.0deg) translateY(-134.5px) scale(0.78); opacity:1.00; } 37.5% { transform: rotate(202.5deg) translateY(-108.1px) scale(0.66); opacity:1.00; } 50.0% { transform: rotate(270.0deg) translateY(-82.7px) scale(0.55); opacity:1.00; } 62.5% { transform: rotate(337.5deg) translateY(-58.6px) scale(0.44); opacity:1.00; } 75.0% { transform: rotate(405.0deg) translateY(-36.0px) scale(0.32); opacity:1.00; } 87.5% { transform: rotate(472.5deg) translateY(-15.7px) scale(0.21); opacity:0.83; } 100.0% { transform: rotate(540.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+@keyframes s1s { 0.0% { transform: rotate(180.0deg) translateY(-190.0px) scale(1.00); opacity:0.00; } 12.5% { transform: rotate(247.5deg) translateY(-161.9px) scale(0.89); opacity:1.00; } 25.0% { transform: rotate(315.0deg) translateY(-134.5px) scale(0.78); opacity:1.00; } 37.5% { transform: rotate(382.5deg) translateY(-108.1px) scale(0.66); opacity:1.00; } 50.0% { transform: rotate(450.0deg) translateY(-82.7px) scale(0.55); opacity:1.00; } 62.5% { transform: rotate(517.5deg) translateY(-58.6px) scale(0.44); opacity:1.00; } 75.0% { transform: rotate(585.0deg) translateY(-36.0px) scale(0.32); opacity:1.00; } 87.5% { transform: rotate(652.5deg) translateY(-15.7px) scale(0.21); opacity:0.83; } 100.0% { transform: rotate(720.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+@keyframes s2t { 0.0% { transform: rotate(0.0deg) translateY(-190.0px) scale(1.00); opacity:0.00; } 12.5% { transform: rotate(56.2deg) translateY(-161.9px) scale(0.89); opacity:1.00; } 25.0% { transform: rotate(112.5deg) translateY(-134.5px) scale(0.78); opacity:1.00; } 37.5% { transform: rotate(168.8deg) translateY(-108.1px) scale(0.66); opacity:1.00; } 50.0% { transform: rotate(225.0deg) translateY(-82.7px) scale(0.55); opacity:1.00; } 62.5% { transform: rotate(281.2deg) translateY(-58.6px) scale(0.44); opacity:1.00; } 75.0% { transform: rotate(337.5deg) translateY(-36.0px) scale(0.32); opacity:1.00; } 87.5% { transform: rotate(393.8deg) translateY(-15.7px) scale(0.21); opacity:0.83; } 100.0% { transform: rotate(450.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+@keyframes s2s { 0.0% { transform: rotate(180.0deg) translateY(-190.0px) scale(1.00); opacity:0.00; } 12.5% { transform: rotate(123.8deg) translateY(-161.9px) scale(0.89); opacity:1.00; } 25.0% { transform: rotate(67.5deg) translateY(-134.5px) scale(0.78); opacity:1.00; } 37.5% { transform: rotate(11.2deg) translateY(-108.1px) scale(0.66); opacity:1.00; } 50.0% { transform: rotate(-45.0deg) translateY(-82.7px) scale(0.55); opacity:1.00; } 62.5% { transform: rotate(-101.2deg) translateY(-58.6px) scale(0.44); opacity:1.00; } 75.0% { transform: rotate(-157.5deg) translateY(-36.0px) scale(0.32); opacity:1.00; } 87.5% { transform: rotate(-213.8deg) translateY(-15.7px) scale(0.21); opacity:0.83; } 100.0% { transform: rotate(-270.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+@keyframes s3t { 0.0% { transform: rotate(0.0deg) translateY(-210.0px) scale(1.00); opacity:0.00; } 7.1% { transform: rotate(64.3deg) translateY(-192.1px) scale(0.94); opacity:1.00; } 14.3% { transform: rotate(128.6deg) translateY(-174.5px) scale(0.87); opacity:1.00; } 21.4% { transform: rotate(192.9deg) translateY(-157.2px) scale(0.81); opacity:1.00; } 28.6% { transform: rotate(257.1deg) translateY(-140.2px) scale(0.74); opacity:1.00; } 35.7% { transform: rotate(321.4deg) translateY(-123.6px) scale(0.68); opacity:1.00; } 42.9% { transform: rotate(385.7deg) translateY(-107.3px) scale(0.61); opacity:1.00; } 50.0% { transform: rotate(450.0deg) translateY(-91.4px) scale(0.55); opacity:1.00; } 57.1% { transform: rotate(514.3deg) translateY(-76.0px) scale(0.49); opacity:1.00; } 64.3% { transform: rotate(578.6deg) translateY(-61.0px) scale(0.42); opacity:1.00; } 71.4% { transform: rotate(642.9deg) translateY(-46.7px) scale(0.36); opacity:1.00; } 78.6% { transform: rotate(707.1deg) translateY(-33.1px) scale(0.29); opacity:1.00; } 85.7% { transform: rotate(771.4deg) translateY(-20.3px) scale(0.23); opacity:0.95; } 92.9% { transform: rotate(835.7deg) translateY(-8.8px) scale(0.16); opacity:0.48; } 100.0% { transform: rotate(900.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+@keyframes s3s { 0.0% { transform: rotate(180.0deg) translateY(-210.0px) scale(1.00); opacity:0.00; } 7.1% { transform: rotate(244.3deg) translateY(-192.1px) scale(0.94); opacity:1.00; } 14.3% { transform: rotate(308.6deg) translateY(-174.5px) scale(0.87); opacity:1.00; } 21.4% { transform: rotate(372.9deg) translateY(-157.2px) scale(0.81); opacity:1.00; } 28.6% { transform: rotate(437.1deg) translateY(-140.2px) scale(0.74); opacity:1.00; } 35.7% { transform: rotate(501.4deg) translateY(-123.6px) scale(0.68); opacity:1.00; } 42.9% { transform: rotate(565.7deg) translateY(-107.3px) scale(0.61); opacity:1.00; } 50.0% { transform: rotate(630.0deg) translateY(-91.4px) scale(0.55); opacity:1.00; } 57.1% { transform: rotate(694.3deg) translateY(-76.0px) scale(0.49); opacity:1.00; } 64.3% { transform: rotate(758.6deg) translateY(-61.0px) scale(0.42); opacity:1.00; } 71.4% { transform: rotate(822.9deg) translateY(-46.7px) scale(0.36); opacity:1.00; } 78.6% { transform: rotate(887.1deg) translateY(-33.1px) scale(0.29); opacity:1.00; } 85.7% { transform: rotate(951.4deg) translateY(-20.3px) scale(0.23); opacity:0.95; } 92.9% { transform: rotate(1015.7deg) translateY(-8.8px) scale(0.16); opacity:0.48; } 100.0% { transform: rotate(1080.0deg) translateY(-0.0px) scale(0.10); opacity:0.00; } }
+
+  .lab { position:absolute; left:50%; top:200px; width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%; background:#FFD23F; z-index:3; box-shadow:0 0 0 3px #0F1115; animation: spin 1.6s linear infinite; }
+  .lab::after { content:''; position:absolute; left:50%; top:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:#0F1115; }
+  .lab::before { content:''; position:absolute; left:50%; top:8px; width:4px; height:10px; margin-left:-2px; border-radius:2px; background:rgba(15,17,21,.25); }
+  .x .vinyl { background: repeating-radial-gradient(circle, #16181d 0 2px, #22252c 2px 3px); }
+  .x .vinyl .hole { display:none; }
+  .x .w.tube, .x .w.ster { z-index:2; }
+  .x .mark { z-index:4; }
+  .m .w.tube { animation: xt 2.4s .2s cubic-bezier(.35,.05,.55,1) both; }
+  .m .w.ster { animation: xs 2.4s .2s cubic-bezier(.35,.05,.55,1) both; }
+  .m .mark { animation-delay: 2.7s; } .m .mark rect { animation-delay: 3.2s; } .m .tag { animation-delay: 3.6s; }
+  .sl .w.tube { animation: xt 3.2s .2s cubic-bezier(.35,.05,.55,1) both; }
+  .sl .w.ster { animation: xs 3.2s .2s cubic-bezier(.35,.05,.55,1) both; }
+  .sl .mark { animation-delay: 3.5s; } .sl .mark rect { animation-delay: 4s; } .sl .tag { animation-delay: 4.4s; }
+@keyframes xt { 0.0% { transform: rotate(0.0deg) translateY(-190.0px) scale(1.00); opacity:0; } 6.2% { transform: rotate(33.8deg) translateY(-176.4px) scale(0.95); opacity:1; } 12.5% { transform: rotate(67.5deg) translateY(-163.0px) scale(0.90); opacity:1; } 18.8% { transform: rotate(101.2deg) translateY(-149.6px) scale(0.85); opacity:1; } 25.0% { transform: rotate(135.0deg) translateY(-136.5px) scale(0.80); opacity:1; } 31.2% { transform: rotate(168.8deg) translateY(-123.5px) scale(0.74); opacity:1; } 37.5% { transform: rotate(202.5deg) translateY(-110.7px) scale(0.69); opacity:1; } 43.8% { transform: rotate(236.2deg) translateY(-98.0px) scale(0.64); opacity:1; } 50.0% { transform: rotate(270.0deg) translateY(-85.6px) scale(0.59); opacity:1; } 56.2% { transform: rotate(303.8deg) translateY(-73.4px) scale(0.54); opacity:1; } 62.5% { transform: rotate(337.5deg) translateY(-61.5px) scale(0.49); opacity:1; } 68.8% { transform: rotate(371.2deg) translateY(-49.9px) scale(0.44); opacity:1; } 75.0% { transform: rotate(405.0deg) translateY(-38.6px) scale(0.39); opacity:1; } 81.2% { transform: rotate(438.8deg) translateY(-27.7px) scale(0.33); opacity:1; } 87.5% { transform: rotate(472.5deg) translateY(-17.4px) scale(0.28); opacity:1; } 93.8% { transform: rotate(506.2deg) translateY(-7.8px) scale(0.23); opacity:1; } 100.0% { transform: rotate(540.0deg) translateY(-0.0px) scale(0.18); opacity:1; } }
+@keyframes xs { 0.0% { transform: rotate(180.0deg) translateY(-190.0px) scale(1.00); opacity:0; } 6.2% { transform: rotate(213.8deg) translateY(-176.4px) scale(0.95); opacity:1; } 12.5% { transform: rotate(247.5deg) translateY(-163.0px) scale(0.90); opacity:1; } 18.8% { transform: rotate(281.2deg) translateY(-149.6px) scale(0.85); opacity:1; } 25.0% { transform: rotate(315.0deg) translateY(-136.5px) scale(0.80); opacity:1; } 31.2% { transform: rotate(348.8deg) translateY(-123.5px) scale(0.74); opacity:1; } 37.5% { transform: rotate(382.5deg) translateY(-110.7px) scale(0.69); opacity:1; } 43.8% { transform: rotate(416.2deg) translateY(-98.0px) scale(0.64); opacity:1; } 50.0% { transform: rotate(450.0deg) translateY(-85.6px) scale(0.59); opacity:1; } 56.2% { transform: rotate(483.8deg) translateY(-73.4px) scale(0.54); opacity:1; } 62.5% { transform: rotate(517.5deg) translateY(-61.5px) scale(0.49); opacity:1; } 68.8% { transform: rotate(551.2deg) translateY(-49.9px) scale(0.44); opacity:1; } 75.0% { transform: rotate(585.0deg) translateY(-38.6px) scale(0.39); opacity:1; } 81.2% { transform: rotate(618.8deg) translateY(-27.7px) scale(0.33); opacity:1; } 87.5% { transform: rotate(652.5deg) translateY(-17.4px) scale(0.28); opacity:1; } 93.8% { transform: rotate(686.2deg) translateY(-7.8px) scale(0.23); opacity:1; } 100.0% { transform: rotate(720.0deg) translateY(-0.0px) scale(0.18); opacity:1; } }
+  .x .mark { display:flex; align-items:center; justify-content:center; height:48px; }
+  .x .mark span { padding:12px 16px; line-height:48px; }
+  .replay { display:block; margin:10px auto 0; background:#1A1D24; color:#F2F0EA; border:1px solid #2A2E37; border-radius:999px; padding:6px 14px; cursor:pointer; font-size:12px; }
+</style>
+
+<h2>Splash, v8b: medium speed, title box covers the label</h2>
+<p class="subtitle">Option A, slowed down. The words now pass over the grooves and disappear underneath the yellow centre label. The title box is now taller so the yellow label no longer peeks out above and below it. Press Replay.</p>
+
+<div class="cards">
+  <div class="card" data-choice="medium" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="stage va b2 sp x m"><div class="vinyl"></div><div class="w tube">TUBE</div><div class="w ster">STER</div><div class="lab"></div><div class="w mark"><span><svg><rect x="1" y="1" width="calc(100% - 2px)" height="calc(100% - 2px)" rx="12" pathLength="1"/></svg>TUBE<em>STER</em></span></div><div class="tag">Name that year.</div></div>
+      <button class="replay" onclick="event.stopPropagation();replay(this)">Replay</button>
+    </div>
+    <div class="card-body"><h3>Medium · 2.4 s spiral</h3><p>Almost twice as slow as before. Whole splash about 4 s.</p></div>
+  </div>
+</div>
+
+<script>
+  function replay(btn) { const s = btn.previousElementSibling; s.replaceWith(s.cloneNode(true)); }
+</script>

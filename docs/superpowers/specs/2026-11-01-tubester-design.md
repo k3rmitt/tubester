@@ -60,13 +60,15 @@ Pro/Expert/Cooperative modes; more than 8 devices (would need an SFU); non-Spoti
 ### `MusicSource` interface
 
 ```ts
-interface Track { id: string; title: string; artists: string[]; isrc?: string; sourceYear: number }
+interface Track { id: string; title: string; artists: string[]; isrc?: string; sourceYear: number; cover?: string }
 interface MusicSource {
   listPlaylists(): Promise<PlaylistSummary[]>
   loadPlaylist(id: string): Promise<Track[]>
   ready(): Promise<void>            // player device ready
   play(trackId: string): Promise<void>
   stop(): Promise<void>
+  pause(): Promise<void>            // keep the position
+  resume(): Promise<void>
   onError(cb: (e: PlaybackError) => void): void
 }
 ```
@@ -76,7 +78,7 @@ interface MusicSource {
 ### Setup (host)
 1. Log in with Spotify; pick a playlist.
 2. Year resolution runs (progress bar, ~1 s/track, cached). **Year review** screen: list with resolved year, Spotify year, ⚠ flag on mismatch/no match; host can edit a year or exclude a track.
-3. Settings: cards to win (default 10), starting tokens (2), token cap (5), steal window (5 s), buy cost (3).
+3. Settings: cards to win (default 10), starting tokens (2), token cap (5), steal window (30 s, 2–60), buy cost (3).
 4. **Start broadcast** → Chrome share dialog → "this tab".
 5. Share join link. Guests enter a name. Host assigns teams (default: everyone solo). Host starts the game.
 
@@ -120,10 +122,10 @@ interface GameState {
 
 ### Messages (data channel, JSON)
 
-Guest → host: `hello{playerId,secret,name}` then `intent{intent}` where intent is one of `skip`, `place{slot}`, `lockIn{guess?:{title,artist}}`, `steal{slot}`, `buy` (validated by the host runtime, then the engine). Player ids are public (they appear in views); the per-device `secret` (kept in the guest's localStorage) is required to reclaim a player id, so nobody can act as someone else.
+Guest → host: `hello{playerId,secret,name}` then `intent{intent}` where intent is one of `skip`, `place{slot}`, `lockIn{guess?:{title,artist}}`, `steal{slot}`, `buy`, `pause`, `resume` (validated by the host runtime, then the engine). Player ids are public (they appear in views); the per-device `secret` (kept in the guest's localStorage) is required to reclaim a player id, so nobody can act as someone else.
 
 Host → guest:
-`lobby{lobby}` before the game starts; `state{view,lobby,audio,stealWindowMs}` — full filtered view after every change (small; no diffing); `audio` is `countdown|playing|stopped` so screens can show the countdown.
+`lobby{lobby}` before the game starts; `state{view,lobby,audio,stealWindowMs}` — full filtered view after every change (small; no diffing); `audio` is `countdown|playing|paused|stopped` so screens can show the countdown. The view carries `paused{by}` and `timerLeftMs` so every phone's countdown follows the host's clock. Pause, covers, splash and end card: see `2026-11-02-tubester-polish-design.md`.
 `rejected{reason}`.
 
 **View filtering:** before reveal, the current track's `title`, `artists`, `year` are absent from every view, including the host UI's own view. Known caveat: the host's tab holds the data in memory (devtools cheating possible; accepted among friends). Host's own taps have no network delay (slight steal-race advantage; accepted).

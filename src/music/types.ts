@@ -5,6 +5,8 @@ export interface Track {
   isrc?: string;
   /** Year reported by the music source (often a remaster/compilation date). */
   sourceYear: number;
+  /** Album cover image URL, when the source has one. */
+  cover?: string;
 }
 
 export interface PlaylistSummary {
@@ -24,5 +26,9 @@ export interface MusicSource {
   ready(): Promise<void>;
   play(trackId: string): Promise<void>;
   stop(): Promise<void>;
+  /** Pause the current track, keeping its position. */
+  pause(): Promise<void>;
+  /** Continue the paused track from where it stopped. */
+  resume(): Promise<void>;
   onError(cb: (e: PlaybackError) => void): void;
 }

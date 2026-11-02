@@ -1,12 +1,45 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { CardView, GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
+import { TEAM_ICONS } from './teamIcons';
 import { slotLabel, teamById } from './text';
 
 export function Wordmark({ big = false }: { big?: boolean }) {
   return (
     <span className={big ? 'wordmark big' : 'wordmark'}>
       TUBE<span>STER</span>
+    </span>
+  );
+}
+
+/** A team's logo; drawn in the current text colour. */
+export function TeamIcon({ teamId, size = 16 }: { teamId: string; size?: number }) {
+  const markup = TEAM_ICONS[teamId];
+  if (!markup) return null;
+  return (
+    <svg
+      className="team-icon"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: static drawings from teamIcons.ts, never user input
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
+  );
+}
+
+/** The team's line logo next to its name. */
+export function TeamTag({ teamId, name, me = false }: { teamId: string; name: string; me?: boolean }) {
+  return (
+    <span className={me ? 'team-tag me' : 'team-tag'}>
+      <TeamIcon teamId={teamId} size={22} />
+      {name}
     </span>
   );
 }
@@ -31,7 +64,7 @@ export function Scores({ view }: { view: GameView }) {
         if (!team) return null;
         return (
           <span key={id} className={id === view.viewerTeamId ? 'chip me' : 'chip'}>
-            {team.name} {team.timeline.length}/{view.settings.cardsToWin}
+            <TeamIcon teamId={id} /> {team.name} {team.timeline.length}/{view.settings.cardsToWin}
           </span>
         );
       })}
@@ -51,10 +84,43 @@ export function Disc({ size = 64 }: { size?: number }) {
   );
 }
 
+/** Album cover, or a plain record sleeve when there is none or it fails to load. */
+export function Cover({ url, size, label }: { url?: string; size: number; label: string }) {
+  const [failed, setFailed] = useState(false);
+  const style = { width: size, height: size };
+  if (!url || failed) {
+    return (
+      <span className="cover placeholder" style={style} role="img" aria-label={label}>
+        <Disc size={Math.round(size * 0.6)} />
+      </span>
+    );
+  }
+  return (
+    <img
+      className="cover"
+      style={style}
+      src={url}
+      alt={label}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Stands in for the cover of the song being played: it stays secret until the reveal. */
+export function MysterySleeve({ size = 64 }: { size?: number }) {
+  return (
+    <span className="cover mystery" style={{ width: size, height: size, fontSize: size * 0.55 }} aria-hidden="true">
+      ?
+    </span>
+  );
+}
+
 export function NowPlaying({ label, audio }: { label: string; audio: AudioState }) {
   return (
     <div className="panel now">
-      <Disc />
+      <MysterySleeve />
       <div className="rows">
         <span className="kicker">{label}</span>
         <strong className="headline">Mystery track</strong>
@@ -66,7 +132,7 @@ export function NowPlaying({ label, audio }: { label: string; audio: AudioState 
             <i />
           </span>
         ) : (
-          <span className="muted">{audio === 'countdown' ? 'Get ready…' : 'Stopped'}</span>
+          <span className="muted">{audio === 'countdown' ? 'Get ready…' : audio === 'paused' ? 'Paused' : 'Stopped'}</span>
         )}
       </div>
     </div>
@@ -99,11 +165,16 @@ export function Timeline({
         <button
           key={`slot-${i}`}
           type="button"
-          className={`slot ${slot.state}`}
+          className={slot.onPick ? `slot ${slot.state} can-pick` : `slot ${slot.state}`}
           disabled={!slot.onPick}
           aria-pressed={slot.state === 'mine'}
           onClick={slot.onPick}
         >
+          {slot.onPick && (
+            <span className="slot-plus" aria-hidden="true">
+              +
+            </span>
+          )}
           {slotLabel(cards, i)}
           {slot.note ? ` · ${slot.note}` : ''}
         </button>,
@@ -113,6 +184,7 @@ export function Timeline({
     if (card) {
       items.push(
         <div key={card.trackId} className="card">
+          <Cover url={card.cover} size={44} label={`${card.title} cover`} />
           <span className="year">{card.year}</span>
           <span className="meta">
             <span className="title">{card.title}</span>

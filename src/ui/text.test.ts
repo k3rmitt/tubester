@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, run, teamOf } from '../engine/testkit';
 import type { GameState } from '../engine/types';
 import { toView } from '../host/view';
-import { connectionHeadline, revealHeadline, slotLabel, winnersHeadline } from './text';
+import { cardCount, connectionHeadline, nameBonusLine, stealTakenNote, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
 
 const reveal = (g: GameState, viewer: string | null) => toView(g, {}, viewer);
 const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot: number }[] = []) =>
@@ -10,7 +10,7 @@ const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot
     g,
     { type: 'place', teamId: 'B', slot },
     { type: 'lockIn', teamId: 'B', nameCorrect: false },
-    ...steals.map((s) => ({ type: 'steal' as const, ...s })),
+    ...steals.map((s) => ({ type: 'steal' as const, teamId: s.teamId, slots: [s.slot] })),
     { type: 'closeSteals' },
   );
 
@@ -51,6 +51,31 @@ describe('winnersHeadline', () => {
     expect(winnersHeadline(reveal(g, 'A'))).toBe('Cassette wins!');
     expect(winnersHeadline(reveal(newGame(), 'A'))).toBe('');
   });
+
+  it('joins tied winners with and', () => {
+    const v = reveal(lockAndClose(newGame({ cardsToWin: 2 }), 1), 'B');
+    const names = (ids: string[]) => winnersHeadline({ ...v, viewerTeamId: 'X', winnerIds: ids });
+    expect(names(['A', 'B'])).toBe(`${v.teams[0].name} and ${v.teams[1].name} win!`);
+    expect(names(['A', 'B', 'C'])).toBe(`${v.teams[0].name}, ${v.teams[1].name} and ${v.teams[2].name} win!`);
+    expect(winnersHeadline({ ...v, winnerIds: ['A', 'B'] })).toBe('You win!');
+  });
+});
+
+describe('cardCount', () => {
+  it('uses the singular for one card', () => {
+    expect(cardCount(1)).toBe('1 card');
+    expect(cardCount(0)).toBe('0 cards');
+    expect(cardCount(10)).toBe('10 cards');
+  });
+});
+
+describe('endCardTone', () => {
+  it('is the win tone only for a winning viewer', () => {
+    const g = lockAndClose(newGame({ cardsToWin: 2 }), 1);
+    expect(endCardTone(reveal(g, 'B'))).toBe('win');
+    expect(endCardTone(reveal(g, 'A'))).toBe('lose');
+    expect(endCardTone(reveal(g, null))).toBe('lose');
+  });
 });
 
 describe('connectionHeadline', () => {
@@ -63,5 +88,28 @@ describe('connectionHeadline', () => {
     ['closed', false, 'room full', 'Connection lost'],
   ] as const)('%s, joined=%s, error=%s → %s', (status, joined, error, headline) => {
     expect(connectionHeadline(status, joined, error)).toBe(headline);
+  });
+});
+
+describe('stealTakenNote', () => {
+  it('says how many selected slots were already taken', () => {
+    expect(stealTakenNote(2, 2)).toBeNull();
+    expect(stealTakenNote(3, 2)).toBe('1 slot was already taken');
+    expect(stealTakenNote(3, 1)).toBe('2 slots were already taken');
+  });
+});
+
+describe('nameBonusLine', () => {
+  const base = () => reveal(lockAndClose(newGame(), 1), 'A');
+  const withOutcome = (o: { nameBonus: boolean; stealNameBonus: string[] }) => {
+    const v = base();
+    if (!v.reveal) throw new Error('no reveal');
+    return { ...v, reveal: { ...v.reveal, outcome: { ...v.reveal.outcome, ...o } } };
+  };
+  it('names who earned a token for naming the song', () => {
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: [] }))).toBeNull();
+    expect(nameBonusLine(withOutcome({ nameBonus: true, stealNameBonus: [] }))).toBe('Cassette named it: +1 token');
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: ['C'] }))).toBe('Mixtape named it: +1 token');
+    expect(nameBonusLine(withOutcome({ nameBonus: false, stealNameBonus: ['C', 'A'] }))).toBe('Mixtape and Vinyl named it: +1 token each');
   });
 });

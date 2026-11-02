@@ -23,7 +23,7 @@ describe('lobby', () => {
   it('starts with the host alone on the first team', () => {
     expect(createLobby(HOST)).toEqual({
       players: [{ id: 'host', name: 'Hervé', teamId: 'team-0', connected: true, isHost: true }],
-      settings: { cardsToWin: 10, startingTokens: 2, stealWindowSec: 5 },
+      settings: { cardsToWin: 10, startingTokens: 2, stealWindowSec: 30 },
       started: false,
     });
     expect(teamNameOf('team-0')).toBe('Vinyl');
@@ -69,6 +69,16 @@ describe('lobby', () => {
     expect(updateSettings(l, { cardsToWin: Number.NaN, stealWindowSec: Number('') - Number.POSITIVE_INFINITY }).settings).toEqual(
       l.settings,
     );
+  });
+
+  it('defaults the steal window to 30 s', () => {
+    expect(createLobby(HOST).settings.stealWindowSec).toBe(30);
+  });
+
+  it('accepts steal windows up to 60 s and clamps above', () => {
+    const l = createLobby(HOST);
+    expect(updateSettings(l, { stealWindowSec: 60 }).settings.stealWindowSec).toBe(60);
+    expect(updateSettings(l, { stealWindowSec: 90 }).settings.stealWindowSec).toBe(60);
   });
 
   it('groups players into team setups in team order and needs two teams', () => {

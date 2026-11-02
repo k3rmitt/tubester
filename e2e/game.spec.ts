@@ -47,7 +47,8 @@ test('three players play a short game to the end', async ({ browser }) => {
   await expect(host.page.getByLabel('Team for Marco')).toBeVisible();
   await expect(host.page.getByRole('radio', { name: 'Demo tones' })).toBeChecked();
   await setNumber(host.page, 'Cards to win', '2');
-  await setNumber(host.page, 'Steal window (s)', '2');
+  // Long window: the game only moves on because the other teams pass (the window closes early).
+  await setNumber(host.page, 'Steal window (s)', '60');
   await host.page.getByRole('button', { name: 'Start game' }).click();
 
   const pages = [host.page, lea, marco];
@@ -56,9 +57,15 @@ test('three players play a short game to the end', async ({ browser }) => {
   await expect.poll(() => hasAudio(marco), { timeout: 20_000 }).toBe(true);
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
 
+  await lea.getByRole('button', { name: 'Pause' }).click();
+  for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeVisible({ timeout: 15_000 });
+  await expect(marco.getByRole('button', { name: 'Resume' })).toBeFocused();
+  await marco.getByRole('button', { name: 'Resume' }).click();
+  for (const p of pages) await expect(p.getByText('Paused by Léa')).toBeHidden({ timeout: 15_000 });
+
   let sawReveal = false;
   for (let i = 0; i < 40; i++) {
-    if (await host.page.getByText(WIN).isVisible()) break;
+    if (await host.page.getByText(WIN).first().isVisible()) break;
     let player: Page | undefined;
     for (const p of pages) if (await p.getByRole('button', { name: 'Lock in' }).isVisible()) player = p;
     if (!player) {
@@ -67,6 +74,12 @@ test('three players play a short game to the end', async ({ browser }) => {
     }
     await player.getByRole('button', { name: /^(Before|Between|After)/ }).first().click();
     await player.getByRole('button', { name: 'Lock in' }).click();
+    for (const p of pages) {
+      if (p === player) continue;
+      const press = p.getByRole('button', { name: 'TUBESTER!' });
+      await expect(press).toBeEnabled({ timeout: 15_000 });
+      await press.click();
+    }
     const next = host.page.getByRole('button', { name: /^(Next|New game)$/ });
     await expect(next).toBeVisible({ timeout: 15_000 });
     if ((await next.textContent()) === 'Next') {
@@ -76,7 +89,8 @@ test('three players play a short game to the end', async ({ browser }) => {
     }
   }
 
-  for (const p of pages) await expect(p.getByText(WIN)).toBeVisible({ timeout: 15_000 });
+  for (const p of pages) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
+  await expect(lea.getByRole('button', { name: 'See the timelines' })).toBeFocused();
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
   expect(sawReveal || (await lea.getByText('It was', { exact: true }).isVisible())).toBe(true);
 });
@@ -98,4 +112,10 @@ test('a guest gets the game back after the host reloads', async ({ browser }) =>
   await expect(lea.getByText('Reconnecting…')).toBeHidden({ timeout: 60_000 });
   await expect(lea.locator('.scores')).toHaveText(scores ?? '');
   await expect.poll(() => hasAudio(lea), { timeout: 30_000 }).toBe(true);
+
+  await host.page.getByRole('button', { name: 'Pause' }).click();
+  await host.page.getByRole('button', { name: 'End game' }).click();
+  await expect(host.page.getByText('End the game for everyone?')).toBeVisible();
+  await host.page.getByRole('button', { name: 'End game' }).click();
+  for (const p of [host.page, lea]) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
 });

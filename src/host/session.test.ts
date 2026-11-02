@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_LOBBY_SETTINGS } from './lobby';
 import { DEMO_TRACKS } from '../music/demo';
 import { FakeMusicSource, type ToneOutput } from '../music/fake';
 import { type MemoryGuest, MemoryHub } from '../net/memory';
@@ -15,7 +16,9 @@ function setup(storage: KeyValueStorage = memoryStorage()) {
   const music = new FakeMusicSource(silent, TRACKS);
   const timers = fakeTimers();
   const snaps: HostSnapshot[] = [];
+  const clock = { t: 0 };
   const session = new HostSession({
+    now: () => clock.t,
     transport: hub.host,
     music,
     host: { id: 'host', name: 'Hervé' },
@@ -29,7 +32,7 @@ function setup(storage: KeyValueStorage = memoryStorage()) {
     g.send({ t: 'hello', playerId: id, secret, name });
     return g;
   };
-  return { hub, music, timers, snaps, session, join, storage };
+  return { hub, music, timers, snaps, session, join, storage, clock };
 }
 
 /** Places at slot 0 and locks in for whichever team is active (host = team-0). */
@@ -162,6 +165,20 @@ describe('HostSession game', () => {
     expect(wire).not.toContain(current.id);
   });
 
+  it('shows covers on timeline cards but never the current track cover before the reveal', () => {
+    const { session, join, timers, music } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS.map((t) => ({ ...t, cover: `https://img/${t.id}.jpg` })));
+    timers.fire(COUNTDOWN_MS);
+    const current = music.played[0];
+    const last = lea.last();
+    if (last?.t !== 'state') throw new Error('no state');
+    const cards = last.view.teams.flatMap((t) => t.timeline);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const c of cards) expect(c.cover).toBe(`https://img/${c.trackId}.jpg`);
+    expect(JSON.stringify(lea.received)).not.toContain(`https://img/${current}.jpg`);
+  });
+
   it('routes intents and reports rejections to the sender', () => {
     const { session, join } = setup();
     const lea = join('p1', 'Léa');
@@ -185,7 +202,7 @@ describe('HostSession game', () => {
     expect(music.played).toHaveLength(1);
     playActiveTurn(session, { 'team-1': lea });
     expect(session.snapshot().view?.phase).toBe('stealWindow');
-    timers.fire(5000);
+    timers.fire(DEFAULT_LOBBY_SETTINGS.stealWindowSec * 1000);
     expect(session.snapshot().view?.phase).toBe('reveal');
     expect(session.snapshot().audio).toBe('stopped');
     timers.fire(REVEAL_MS);
@@ -235,7 +252,7 @@ describe('HostSession game', () => {
     }
     timers.fire(COUNTDOWN_MS);
     playActiveTurn(session, { 'team-1': lea });
-    timers.fire(5000);
+    timers.fire(DEFAULT_LOBBY_SETTINGS.stealWindowSec * 1000);
     timers.fire(REVEAL_MS);
     music.failNext = true;
     timers.fire(COUNTDOWN_MS);
@@ -278,5 +295,146 @@ describe('HostSession game', () => {
     expect(session.snapshot().lobby.players).toHaveLength(2);
     expect(storage.getItem(SAVE_KEY)).toBeNull();
     expect(lea.last()?.t).toBe('lobby');
+  });
+});
+
+describe('HostSession pause', () => {
+  it('pausing during the countdown holds it and resumes with the time left', () => {
+    const { session, join, timers, clock } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS);
+    expect(timers.pending()).toContain(COUNTDOWN_MS);
+    clock.t += 1000;
+    lea.send({ t: 'intent', intent: { type: 'pause' } });
+    expect(timers.pending()).not.toContain(COUNTDOWN_MS);
+    expect(session.snapshot().audio).toBe('paused');
+    clock.t += 30_000;
+    lea.send({ t: 'intent', intent: { type: 'resume' } });
+    expect(timers.pending()).toContain(COUNTDOWN_MS - 1000);
+    expect(session.snapshot().audio).toBe('countdown');
+    timers.fire(COUNTDOWN_MS - 1000);
+    expect(session.snapshot().audio).toBe('playing');
+  });
+
+  it('pausing while playing pauses the music; resuming resumes it', () => {
+    const { session, timers, music, join } = setup();
+    join('p1', 'Léa');
+    const calls: string[] = [];
+    music.pause = async () => {
+      calls.push('pause');
+    };
+    music.resume = async () => {
+      calls.push('resume');
+    };
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    expect(session.act({ type: 'pause' })).toEqual({ ok: true });
+    expect(session.snapshot().audio).toBe('paused');
+    expect(session.act({ type: 'resume' })).toEqual({ ok: true });
+    expect(session.snapshot().audio).toBe('playing');
+    expect(calls).toEqual(['pause', 'resume']);
+    expect(music.played).toHaveLength(1);
+  });
+
+  it('guests see who paused and the paused audio', () => {
+    const { session, join, timers } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    lea.send({ t: 'intent', intent: { type: 'pause' } });
+    const last = lea.last();
+    if (last?.t !== 'state') throw new Error('no state');
+    expect(last.view.paused).toEqual({ by: 'p1' });
+    expect(last.audio).toBe('paused');
+  });
+
+  it('pausing during the reveal keeps the music stopped and resumes to stopped', () => {
+    const { session, join, timers } = setup();
+    const lea = join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    playActiveTurn(session, { 'team-1': lea });
+    timers.fire(DEFAULT_LOBBY_SETTINGS.stealWindowSec * 1000);
+    expect(session.snapshot().view?.phase).toBe('reveal');
+    session.act({ type: 'pause' });
+    expect(session.snapshot().audio).toBe('paused');
+    session.act({ type: 'resume' });
+    expect(session.snapshot().audio).toBe('stopped');
+  });
+
+  it('resume after restore starts the countdown', () => {
+    const storage = memoryStorage();
+    const a = setup(storage);
+    a.join('p1', 'Léa');
+    a.session.startGame(TRACKS);
+    a.timers.fire(COUNTDOWN_MS);
+    a.session.act({ type: 'pause' });
+    a.session.dispose();
+    const b = setup(storage);
+    expect(b.session.snapshot().view?.paused).toEqual({ by: 'host' });
+    expect(b.session.snapshot().audio).toBe('paused');
+    expect(b.timers.pending()).toEqual([]);
+    expect(b.session.act({ type: 'resume' })).toEqual({ ok: true });
+    expect(b.timers.pending()).toContain(COUNTDOWN_MS);
+    b.timers.fire(COUNTDOWN_MS);
+    expect(b.music.played).toHaveLength(1);
+  });
+
+  it('New game while paused ends the pause', () => {
+    const { session, timers, join } = setup();
+    join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    session.act({ type: 'pause' });
+    session.reset();
+    expect(session.snapshot().view).toBeNull();
+    expect(session.snapshot().audio).toBe('stopped');
+    expect(session.startGame(TRACKS)).toEqual({ ok: true });
+    expect(session.snapshot().audio).toBe('countdown');
+  });
+
+  it('ignores retryMusic while paused', () => {
+    const { session, timers, join } = setup();
+    join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    session.act({ type: 'pause' });
+    session.retryMusic();
+    expect(session.snapshot().audio).toBe('paused');
+  });
+
+  it('a playback failure while paused skips the track once resumed', () => {
+    const { session, join, timers, music } = setup();
+    join('p1', 'Léa');
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    const first = music.played[0];
+    const seq = session.snapshot().view?.turn?.seq;
+    session.act({ type: 'pause' });
+    music.emitError(first, 'Spotify player is not responding');
+    expect(session.snapshot().view?.turn?.seq).toBe(seq);
+    session.act({ type: 'resume' });
+    expect(session.snapshot().audio).not.toBe('playing');
+    timers.fire(0);
+    expect(session.snapshot().view?.turn?.seq).not.toBe(seq);
+    expect(session.snapshot().audio).toBe('countdown');
+  });
+
+  it('the host can end a paused game', () => {
+    const { session, join, timers, music } = setup();
+    const lea = join('p1', 'Léa');
+    let resumed = 0;
+    music.resume = async () => {
+      resumed++;
+    };
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    session.act({ type: 'pause' });
+    expect(session.endGame()).toEqual({ ok: true });
+    expect(resumed).toBe(0);
+    expect(session.snapshot().audio).toBe('stopped');
+    expect(session.snapshot().view?.phase).toBe('finished');
+    const last = lea.last();
+    expect(last?.t === 'state' && last.view.phase).toBe('finished');
   });
 });

@@ -8,7 +8,9 @@ const PLAYERS = { p1: 'A', p2: 'B', p3: 'C' };
 function fakeDeps() {
   const timers: { fn: () => void; ms: number; cancelled: boolean }[] = [];
   const changes: GameState[] = [];
+  let t = 0;
   const deps: RuntimeDeps = {
+    now: () => t,
     meta: { t1: { title: 'Smells Like Teen Spirit', artists: ['Nirvana'] } },
     stealWindowMs: 5000,
     revealMs: 5000,
@@ -28,7 +30,10 @@ function fakeDeps() {
     t.fn();
   };
   const pending = () => timers.filter((x) => !x.cancelled).map((x) => x.ms);
-  return { deps, timers, changes, fire, pending };
+  const advance = (ms: number) => {
+    t += ms;
+  };
+  return { deps, timers, changes, fire, pending, advance };
 }
 
 describe('HostRuntime', () => {
@@ -74,9 +79,10 @@ describe('HostRuntime', () => {
     rt.handleIntent('p2', { type: 'lockIn' });
     expect(rt.state.phase).toBe('stealWindow');
     expect(pending()).toEqual([5000]);
-    expect(rt.handleIntent('p3', { type: 'steal', slot: 0 })).toEqual({ ok: true });
-    fire();
-    expect(rt.state.phase).toBe('reveal');
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('stealWindow');
+    expect(rt.handleIntent('p1', { type: 'steal', slots: [] })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('reveal'); // every other team answered: the window closed early
     expect(pending()).toEqual([5000]);
     fire();
     expect(rt.state.phase).toBe('deciding');
@@ -175,5 +181,227 @@ describe('HostRuntime hardening', () => {
     expect(rt.command({ type: 'passTurn' })).toEqual({ ok: false, reason: 'disposed' });
     expect(pending()).toEqual([]);
     expect(changes).toHaveLength(1);
+  });
+});
+
+/** B (p2) places and locks in: the steal window opens at the current clock time. */
+function toStealWindow(rt: HostRuntime) {
+  rt.handleIntent('p2', { type: 'place', slot: 1 });
+  rt.handleIntent('p2', { type: 'lockIn' });
+}
+
+describe('HostRuntime pause', () => {
+  it('pauses the steal window and resumes with the time left', () => {
+    const { deps, pending, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    toStealWindow(rt);
+    advance(2000);
+    expect(rt.handleIntent('p3', { type: 'pause' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    expect(rt.paused).toEqual({ by: 'p3' });
+    expect(rt.viewFor('p1').paused).toEqual({ by: 'p3' });
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3000);
+    advance(60_000);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3000);
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([3000]);
+    expect(rt.paused).toBeNull();
+    expect(rt.viewFor('p1').paused).toBeNull();
+  });
+
+  it('reports the running timer to views', () => {
+    const { deps, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.viewFor('p1').timerLeftMs).toBeNull();
+    toStealWindow(rt);
+    advance(1500);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(3500);
+  });
+
+  it('pauses during the reveal and while deciding', () => {
+    const { deps, fire, pending, advance } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: true });
+    expect(rt.viewFor('p1').timerLeftMs).toBeNull();
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    toStealWindow(rt);
+    fire();
+    expect(rt.state.phase).toBe('reveal');
+    advance(1000);
+    expect(rt.handleIntent('p2', { type: 'pause' })).toEqual({ ok: true });
+    expect(pending()).toEqual([]);
+    expect(rt.handleIntent('p2', { type: 'resume' })).toEqual({ ok: true });
+    expect(pending()).toEqual([4000]);
+  });
+
+  it('rejects moves and host commands while paused', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(rt.handleIntent('p2', { type: 'place', slot: 0 })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.handleIntent('p1', { type: 'buy' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.command({ type: 'passTurn' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.command({ type: 'trackFailed' })).toEqual({ ok: false, reason: 'game is paused' });
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: false, reason: 'already paused' });
+    expect(rt.state.turn?.slot).toBeNull();
+  });
+
+  it('rejects resume when not paused and pause once finished', () => {
+    const { deps, fire } = fakeDeps();
+    const rt = new HostRuntime(newGame({ cardsToWin: 2 }), PLAYERS, deps);
+    expect(rt.handleIntent('p1', { type: 'resume' })).toEqual({ ok: false, reason: 'not paused' });
+    toStealWindow(rt);
+    fire();
+    expect(rt.state.phase).toBe('finished');
+    expect(rt.handleIntent('p1', { type: 'pause' })).toEqual({ ok: false, reason: 'nothing to pause' });
+  });
+
+  it('a fired-but-cancelled timer does nothing while paused', () => {
+    const { deps, timers } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    toStealWindow(rt);
+    const stealTimer = timers.at(-1);
+    rt.handleIntent('p3', { type: 'pause' });
+    stealTimer?.fn();
+    expect(rt.state.phase).toBe('stealWindow');
+  });
+
+  it('notifies onChange on pause and resume', () => {
+    const { deps, changes } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(changes).toHaveLength(1);
+    rt.handleIntent('p1', { type: 'resume' });
+    expect(changes).toHaveLength(2);
+  });
+
+  it('survives serialize/restore while paused', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    toStealWindow(rt);
+    a.advance(2000);
+    rt.handleIntent('p3', { type: 'pause' });
+    const saved = rt.serialize();
+    rt.dispose();
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(saved, b.deps);
+    expect(restored.paused).toEqual({ by: 'p3' });
+    expect(b.pending()).toEqual([]);
+    expect(restored.viewFor('p1').timerLeftMs).toBe(3000);
+    expect(restored.handleIntent('p3', { type: 'resume' })).toEqual({ ok: true });
+    expect(b.pending()).toEqual([3000]);
+  });
+
+  it('restores v1 saves as not paused', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    toStealWindow(rt);
+    const v1 = JSON.stringify({ ...JSON.parse(rt.serialize()), v: 1, paused: undefined });
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(v1, b.deps);
+    expect(restored.paused).toBeNull();
+    expect(b.pending()).toEqual([5000]);
+  });
+
+  it('rejects unknown players pausing', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    expect(rt.handleIntent('nobody', { type: 'pause' })).toEqual({ ok: false, reason: 'unknown player' });
+    expect(rt.paused).toBeNull();
+  });
+});
+
+describe('HostRuntime steals', () => {
+  it('accepts several slots and the legacy single slot', () => {
+    const { deps } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [0] })).toEqual({ ok: true });
+    expect(rt.handleIntent('p1', { type: 'steal', slot: 0 })).toEqual({ ok: false, reason: 'slot taken' });
+  });
+
+  it.each([{ slots: 'x' }, { slots: [0], guess: { title: 1 } }, { slots: Array.from({ length: 33 }, (_, i) => i) }, { slots: [0, 'a'] }])(
+    'rejects malformed slots %j',
+    (extra) => {
+      const { deps } = fakeDeps();
+      const rt = new HostRuntime(newGame(), PLAYERS, deps);
+      rt.handleIntent('p2', { type: 'place', slot: 1 });
+      rt.handleIntent('p2', { type: 'lockIn' });
+      expect(rt.handleIntent('p3', { type: 'steal', ...extra })).toEqual({ ok: false, reason: 'malformed intent' });
+    },
+  );
+
+  it('swaps the steal timer for the reveal timer when the window closes early', () => {
+    const { deps, pending } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    expect(pending()).toEqual([5000]);
+    rt.handleIntent('p3', { type: 'steal', slots: [0] });
+    rt.handleIntent('p1', { type: 'steal', slots: [] });
+    expect(rt.state.phase).toBe('reveal');
+    expect(pending()).toEqual([5000]);
+    expect(rt.viewFor('p1').timerLeftMs).toBe(5000);
+  });
+});
+
+describe('HostRuntime endGame', () => {
+  it('is the one command allowed while paused, and clears the pause', () => {
+    const { deps, pending } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(rt.command({ type: 'endGame' })).toEqual({ ok: true });
+    expect(rt.paused).toBeNull();
+    expect(rt.state.phase).toBe('finished');
+    expect(pending()).toEqual([]);
+    expect(JSON.stringify(rt.viewFor('p1'))).not.toContain('Smells Like Teen Spirit');
+  });
+});
+
+describe('HostRuntime steal answers', () => {
+  function stealWindow() {
+    const d = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, d.deps);
+    rt.handleIntent('p2', { type: 'place', slot: 0 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    return { rt, ...d };
+  }
+
+  it('checks a stealer name guess with the matcher and pays it at the reveal', () => {
+    const { rt } = stealWindow();
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [], guess: { title: 'smells like teen spirit', artist: 'nirvana' } })).toEqual({ ok: true });
+    expect(rt.handleIntent('p1', { type: 'steal', slots: [], guess: { title: 'nope', artist: 'nobody' } })).toEqual({ ok: true });
+    expect(rt.state.phase).toBe('reveal');
+    expect(rt.state.lastOutcome?.stealNameBonus).toEqual(['C']);
+  });
+
+  it('accepts a pass and shows who answered, never who named it', () => {
+    const { rt } = stealWindow();
+    expect(rt.handleIntent('p3', { type: 'steal', slots: [], guess: { title: 'smells like teen spirit', artist: 'nirvana' } })).toEqual({ ok: true });
+    const view = rt.viewFor('p1');
+    expect(view.turn?.answered).toEqual(['C']);
+    expect(JSON.stringify(view)).not.toContain('namedBy');
+  });
+});
+
+describe('HostRuntime old saves', () => {
+  it('restores a save from before steal answers existed', () => {
+    const a = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, a.deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    const saved = JSON.parse(rt.serialize());
+    delete saved.state.turn.answered;
+    delete saved.state.turn.namedBy;
+    saved.state.lastOutcome = { trackId: 'a1', activeTeamId: 'A', activeCorrect: true, cardWonBy: 'A', nameBonus: false };
+    const b = fakeDeps();
+    const restored = HostRuntime.restore(JSON.stringify({ ...saved, v: 1 }), b.deps);
+    expect(restored.viewFor('p1').turn?.answered).toEqual([]);
+    expect(restored.handleIntent('p3', { type: 'steal', slots: [] })).toEqual({ ok: true });
+    expect(restored.state.lastOutcome?.stealNameBonus).toEqual([]);
   });
 });

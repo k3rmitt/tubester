@@ -69,3 +69,25 @@ describe('buy by the active team', () => {
     expect(apply(locked, { type: 'buy', teamId: 'B' })).toEqual({ ok: false, reason: 'cannot buy during your own turn' });
   });
 });
+
+describe('endGame', () => {
+  it('finishes mid-turn with the longest timelines as winners and hides the song', () => {
+    const g0 = structuredClone(newGame());
+    teamOf(g0, 'C').timeline.push({ trackId: 'x', year: 2000 });
+    const g = run(g0, { type: 'endGame' });
+    expect(g.phase).toBe('finished');
+    expect(g.winnerIds).toEqual(['C']);
+    expect(g.discard).toContain('t1');
+    expect(g.lastOutcome).toBeNull();
+    expect(g.turn).toBeNull();
+  });
+  it('shares a tie and works during the steal window', () => {
+    const g = run(newGame(), { type: 'place', teamId: 'B', slot: 1 }, { type: 'lockIn', teamId: 'B', nameCorrect: false }, { type: 'endGame' });
+    expect(g.phase).toBe('finished');
+    expect(g.winnerIds).toEqual(['A', 'B', 'C']);
+  });
+  it('is refused once finished', () => {
+    const g = run(newGame(), { type: 'endGame' });
+    expect(apply(g, { type: 'endGame' })).toEqual({ ok: false, reason: 'game is finished' });
+  });
+});

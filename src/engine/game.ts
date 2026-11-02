@@ -78,9 +78,11 @@ function handle(s: GameState, a: Action): string | null {
     case 'passTurn':
       return passTurn(s);
     case 'steal':
-      return steal(s, a.teamId, a.slot);
+      return steal(s, a.teamId, a.slots, a.nameCorrect ?? false);
     case 'closeSteals':
       return closeSteals(s);
+    case 'endGame':
+      return endGame(s);
     case 'nextTurn':
       return nextTurn(s);
     case 'buy':
@@ -106,7 +108,7 @@ function drawForCurrentTeam(s: GameState): void {
     finishByLongest(s);
     return;
   }
-  s.turn = { teamId: activeTeamId(s), trackId, slot: null, nameCorrect: false, steals: [] };
+  s.turn = { teamId: activeTeamId(s), trackId, slot: null, nameCorrect: false, steals: [], answered: [], namedBy: [] };
   s.phase = 'deciding';
 }
 
@@ -152,6 +154,7 @@ function lockIn(s: GameState, teamId: TeamId, nameCorrect: boolean): string | nu
   if (s.turn!.slot === null) return 'place the card first';
   s.turn!.nameCorrect = nameCorrect;
   s.phase = 'stealWindow';
+  if (stealsDone(s)) closeSteals(s);
   return null;
 }
 
@@ -183,18 +186,36 @@ function passTurn(s: GameState): string | null {
   return null;
 }
 
-function steal(s: GameState, teamId: TeamId, slot: number): string | null {
+/** Each other team answers once: slots it can still claim (1 token each), a name guess, or a pass. */
+function steal(s: GameState, teamId: TeamId, slots: number[], nameCorrect: boolean): string | null {
   if (s.phase !== 'stealWindow' || !s.turn) return 'no steal window open';
   const turn = s.turn;
   if (teamId === turn.teamId) return 'cannot steal your own card';
   const thief = team(s, teamId);
-  if (turn.steals.some((x) => x.teamId === teamId)) return 'already stole this turn';
-  if (thief.tokens < 1) return 'not enough tokens';
-  if (!isValidSlot(team(s, turn.teamId).timeline, slot)) return 'invalid slot';
-  if (slot === turn.slot || turn.steals.some((x) => x.slot === slot)) return 'slot taken';
-  thief.tokens -= 1;
-  turn.steals.push({ teamId, slot });
+  if (turn.answered.includes(teamId)) return 'already answered this turn';
+  const timeline = team(s, turn.teamId).timeline;
+  if (new Set(slots).size !== slots.length) return 'invalid slot';
+  if (!slots.every((slot) => isValidSlot(timeline, slot))) return 'invalid slot';
+  if (slots.length > thief.tokens) return 'not enough tokens';
+  const free = slots.filter((slot) => !isTaken(turn, slot));
+  if (slots.length > 0 && free.length === 0) return 'slot taken';
+  thief.tokens -= free.length;
+  for (const slot of free) turn.steals.push({ teamId, slot });
+  turn.answered.push(teamId);
+  if (nameCorrect) turn.namedBy.push(teamId);
+  if (stealsDone(s)) closeSteals(s);
   return null;
+}
+
+function isTaken(turn: NonNullable<GameState['turn']>, slot: number): boolean {
+  return slot === turn.slot || turn.steals.some((x) => x.slot === slot);
+}
+
+/** Nobody left to wait for: every other team has answered. */
+function stealsDone(s: GameState): boolean {
+  const turn = s.turn;
+  if (s.phase !== 'stealWindow' || !turn) return false;
+  return s.teams.every((t) => t.id === turn.teamId || turn.answered.includes(t.id));
 }
 
 function closeSteals(s: GameState): string | null {
@@ -217,10 +238,24 @@ function closeSteals(s: GameState): string | null {
     s.discard.push(trackId);
   }
   if (nameCorrect) active.tokens = Math.min(s.settings.tokenCap, active.tokens + 1);
+  const stealNameBonus = nameCorrect ? [] : [...s.turn.namedBy];
+  for (const id of stealNameBonus) {
+    const t = team(s, id);
+    t.tokens = Math.min(s.settings.tokenCap, t.tokens + 1);
+  }
 
-  s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect };
+  s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect, stealNameBonus };
   s.phase = 'reveal';
   if (cardWonBy) checkWin(s, cardWonBy);
+  return null;
+}
+
+/** The host stops the game: most cards wins, ties shared; the song in play is never revealed. */
+function endGame(s: GameState): string | null {
+  if (s.phase !== 'deciding' && s.phase !== 'stealWindow' && s.phase !== 'reveal') return 'nothing to end';
+  if (s.phase !== 'reveal' && s.turn) s.discard.push(s.turn.trackId);
+  s.lastOutcome = null;
+  finishByLongest(s);
   return null;
 }
 

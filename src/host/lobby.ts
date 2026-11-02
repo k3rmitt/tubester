@@ -2,7 +2,7 @@ import type { TeamSetup } from '../engine/game';
 
 export const MAX_PLAYERS = 8;
 
-export const TEAMS = ['Vinyl', 'Cassette', 'Mixtape', 'Jukebox', 'Radio', 'Walkman', 'Turntable', 'Boombox'].map(
+export const TEAMS = ['Vinyl', 'Cassette', 'Mixtape', 'Jukebox', 'Radio', 'Walkman', 'MiniDisc', 'Boombox'].map(
   (name, i) => ({ id: `team-${i}`, name }),
 );
 
@@ -30,12 +30,12 @@ export interface Lobby {
   started: boolean;
 }
 
-export const DEFAULT_LOBBY_SETTINGS: LobbySettings = { cardsToWin: 10, startingTokens: 2, stealWindowSec: 5 };
+export const DEFAULT_LOBBY_SETTINGS: LobbySettings = { cardsToWin: 10, startingTokens: 2, stealWindowSec: 30 };
 
 const LIMITS: Record<keyof LobbySettings, [number, number]> = {
   cardsToWin: [2, 20],
   startingTokens: [0, 5],
-  stealWindowSec: [2, 15],
+  stealWindowSec: [2, 60],
 };
 
 export type JoinResult = { ok: true; lobby: Lobby } | { ok: false; reason: string };

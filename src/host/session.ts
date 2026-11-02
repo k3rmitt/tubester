@@ -45,6 +45,8 @@ export interface HostSessionDeps {
   setTimer: SetTimer;
   storage: KeyValueStorage;
   random?: () => number;
+  /** Clock for timer bookkeeping (defaults to Date.now). */
+  now?: () => number;
   onUpdate: (snapshot: HostSnapshot) => void;
 }
 
@@ -66,6 +68,11 @@ export class HostSession {
   private audio: AudioState = 'stopped';
   private playingTrack: TrackId | null = null;
   private cancelCountdown: (() => void) | null = null;
+  private countdownEndsAt = 0;
+  /** What the audio was doing when the game was paused, and the countdown time left. */
+  private held: { prev: AudioState; countdownLeftMs: number | null } | null = null;
+  /** A playback error that arrived while paused; handled once the game resumes. */
+  private failedWhilePaused: { trackId: TrackId; message: string } | null = null;
   private musicFailures = 0;
   private musicError: string | null = null;
 
@@ -102,7 +109,9 @@ export class HostSession {
     const teams = teamSetups(this.lobby);
     if (tracks.length < teams.length + 1) return { ok: false, reason: 'not enough tracks' };
 
-    this.meta = Object.fromEntries(tracks.map((t) => [t.id, { title: t.title, artists: [...t.artists] }]));
+    this.meta = Object.fromEntries(
+      tracks.map((t) => [t.id, { title: t.title, artists: [...t.artists], ...(t.cover ? { cover: t.cover } : {}) }]),
+    );
     const years = Object.fromEntries(tracks.map((t) => [t.id, t.year ?? t.sourceYear]));
     const deck = shuffle(
       tracks.map((t) => t.id),
@@ -132,9 +141,15 @@ export class HostSession {
     return this.runtime.command(cmd);
   }
 
+  /** The host stops the game for everyone; allowed while paused. */
+  endGame(): IntentResult {
+    if (!this.runtime) return { ok: false, reason: 'game not started' };
+    return this.runtime.command({ type: 'endGame' });
+  }
+
   /** After repeated playback failures: try the current track again. */
   retryMusic(): void {
-    if (!this.runtime) return;
+    if (!this.runtime || this.runtime.paused) return;
     this.musicError = null;
     this.musicFailures = 0;
     this.playingTrack = null;
@@ -160,6 +175,7 @@ export class HostSession {
   private runtimeDeps(): RuntimeDeps {
     return {
       meta: this.meta,
+      now: this.deps.now ?? Date.now,
       stealWindowMs: this.lobby.settings.stealWindowSec * 1000,
       revealMs: REVEAL_MS,
       setTimer: this.deps.setTimer,
@@ -243,27 +259,86 @@ export class HostSession {
     this.broadcast();
   }
 
-  /** One track per turn: countdown, then play; stop at the reveal. */
+  /** One track per turn: countdown, then play; stop at the reveal. A pause holds all of it. */
   private syncAudio(state: GameState): void {
+    if (this.runtime?.paused) {
+      this.holdAudio();
+      return;
+    }
+    if (this.held) {
+      if (state.phase === 'deciding' || state.phase === 'stealWindow') this.releaseAudio();
+      else {
+        // Reveal or ended while paused: nothing to resume, the music stays off.
+        this.held = null;
+        this.audio = 'stopped';
+      }
+    }
     const live = state.phase === 'deciding' || state.phase === 'stealWindow';
     const current = live ? (state.turn?.trackId ?? null) : null;
     if (current === this.playingTrack) return;
     this.stopMusic();
     this.playingTrack = current;
     if (current === null) return;
+    this.startCountdown(current, COUNTDOWN_MS);
+  }
+
+  private startCountdown(trackId: TrackId, ms: number): void {
     this.audio = 'countdown';
+    this.countdownEndsAt = this.now() + ms;
     this.cancelCountdown = this.deps.setTimer(() => {
       this.cancelCountdown = null;
-      if (this.playingTrack !== current) return;
+      if (this.playingTrack !== trackId) return;
       this.audio = 'playing';
-      this.deps.music.play(current).catch((e) => this.onMusicError(current, e instanceof Error ? e.message : String(e)));
+      this.deps.music.play(trackId).catch((e) => this.onMusicError(trackId, e instanceof Error ? e.message : String(e)));
       this.broadcast();
-    }, COUNTDOWN_MS);
+    }, ms);
+  }
+
+  private holdAudio(): void {
+    if (this.held) return;
+    let countdownLeftMs: number | null = null;
+    if (this.cancelCountdown) {
+      countdownLeftMs = Math.max(0, this.countdownEndsAt - this.now());
+      this.cancelCountdown();
+      this.cancelCountdown = null;
+    } else if (this.audio === 'playing') {
+      this.deps.music.pause().catch(() => undefined);
+    }
+    this.held = { prev: this.audio, countdownLeftMs };
+    this.audio = 'paused';
+  }
+
+  private releaseAudio(): void {
+    const held = this.held;
+    this.held = null;
+    if (!held) return;
+    const failed = this.failedWhilePaused;
+    if (failed) {
+      this.failedWhilePaused = null;
+      this.audio = 'stopped';
+      // Outside this onChange call, so the skip doesn't re-enter the sync that is running now.
+      this.deps.setTimer(() => this.onMusicError(failed.trackId, failed.message), 0);
+      return;
+    }
+    if (held.countdownLeftMs !== null && this.playingTrack !== null) {
+      this.startCountdown(this.playingTrack, held.countdownLeftMs);
+    } else if (held.prev === 'playing') {
+      this.audio = 'playing';
+      this.deps.music.resume().catch(() => undefined);
+    } else {
+      this.audio = held.prev;
+    }
+  }
+
+  private now(): number {
+    return (this.deps.now ?? Date.now)();
   }
 
   private stopMusic(): void {
     this.cancelCountdown?.();
     this.cancelCountdown = null;
+    this.held = null;
+    this.failedWhilePaused = null;
     this.playingTrack = null;
     this.audio = 'stopped';
     this.deps.music.stop().catch(() => undefined);
@@ -271,6 +346,10 @@ export class HostSession {
 
   private onMusicError(trackId: TrackId, message: string): void {
     if (!this.runtime || this.playingTrack !== trackId) return;
+    if (this.runtime.paused) {
+      this.failedWhilePaused = { trackId, message };
+      return;
+    }
     this.musicFailures += 1;
     if (this.musicFailures >= MAX_MUSIC_FAILURES) {
       this.musicError = message;

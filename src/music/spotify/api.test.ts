@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HttpError, scriptedFetch } from '../../util/http';
-import { SpotifyApi } from './api';
+import { pickCover, SpotifyApi } from './api';
 
 function setup(responses: { status: number; body?: unknown }[]) {
   const { fetchFn, calls } = scriptedFetch(responses);
@@ -82,6 +82,49 @@ describe('SpotifyApi.loadPlaylist', () => {
       { id: 't5', title: 'No ISRC', artists: ['Artist'], isrc: undefined, sourceYear: 2003 },
     ]);
     expect(calls[0].url).toBe('https://api.spotify.com/v1/playlists/p1/items?limit=100&additional_types=track');
+  });
+});
+
+describe('album covers', () => {
+  it('picks the smallest cover of at least 300 px, else the largest', () => {
+    expect(pickCover([{ url: 'a', width: 640 }, { url: 'b', width: 300 }, { url: 'c', width: 64 }])).toBe('b');
+    expect(pickCover([{ url: 'c', width: 64 }, { url: 'd', width: 200 }])).toBe('d');
+    expect(pickCover([{ width: 640 }, { url: 'e', width: null }])).toBe('e');
+    expect(pickCover([])).toBeUndefined();
+    expect(pickCover(undefined)).toBeUndefined();
+  });
+
+  it('loads the album cover with each track', async () => {
+    const images = [
+      { url: 'u640', width: 640, height: 640 },
+      { url: 'u300', width: 300, height: 300 },
+    ];
+    const { api } = setup([
+      {
+        status: 200,
+        body: {
+          items: [
+            { item: track('t1', 'With cover', '1975', { album: { release_date: '1975', images } }) },
+            { item: track('t2', 'No cover', '1980') },
+          ],
+          next: null,
+        },
+      },
+    ]);
+    const tracks = await api.loadPlaylist('p1');
+    expect(tracks[0].cover).toBe('u300');
+    expect(tracks[1].cover).toBeUndefined();
+  });
+});
+
+describe('SpotifyApi.resume', () => {
+  it('resumes the device without a body (keeps the position)', async () => {
+    const { api, calls } = setup([{ status: 204 }]);
+    await api.resume('dev');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe('https://api.spotify.com/v1/me/player/play?device_id=dev');
+    expect(calls[0].init?.method).toBe('PUT');
+    expect(calls[0].init?.body).toBeUndefined();
   });
 });
 

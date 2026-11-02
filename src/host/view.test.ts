@@ -10,7 +10,31 @@ const meta: Record<string, TrackMeta> = {
   t2: { title: 'Two', artists: ['x'] },
 };
 
+const withCovers: Record<string, TrackMeta> = Object.fromEntries(
+  Object.entries(meta).map(([id, m]) => [id, { ...m, cover: `https://img/${id}-cover.jpg` }]),
+);
+
 describe('toView', () => {
+  it.each(['deciding', 'stealWindow'] as const)('never exposes the current track cover during %s', (phase) => {
+    let g = newGame();
+    if (phase === 'stealWindow') {
+      g = run(g, { type: 'place', teamId: 'B', slot: 1 }, { type: 'lockIn', teamId: 'B', nameCorrect: false });
+    }
+    expect(JSON.stringify(toView(g, withCovers, 'B'))).not.toContain('t1-cover');
+  });
+
+  it('shows covers on timeline cards and at the reveal', () => {
+    const v = toView(newGame(), withCovers, 'A');
+    expect(v.teams[0].timeline[0].cover).toBe('https://img/a1-cover.jpg');
+    const g = run(
+      newGame(),
+      { type: 'place', teamId: 'B', slot: 1 },
+      { type: 'lockIn', teamId: 'B', nameCorrect: false },
+      { type: 'closeSteals' },
+    );
+    expect(toView(g, withCovers, 'A').reveal?.cover).toBe('https://img/t1-cover.jpg');
+  });
+
   it('shows revealed timeline cards with their metadata', () => {
     const v = toView(newGame(), meta, 'A');
     expect(v.teams[0].timeline).toEqual([{ trackId: 'a1', year: 1985, title: 'Take On Me', artists: ['a-ha'] }]);
@@ -33,7 +57,7 @@ describe('toView', () => {
 
   it('exposes the turn without the track', () => {
     const g = run(newGame(), { type: 'place', teamId: 'B', slot: 1 });
-    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [], seq: '0-0' });
+    expect(toView(g, meta, null).turn).toEqual({ teamId: 'B', slot: 1, steals: [], answered: [], seq: '0-0' });
   });
 
   it('changes the turn seq when a new track comes into play', () => {
@@ -54,7 +78,7 @@ describe('toView', () => {
       title: 'Secret Song Title',
       artists: ['Hidden Artist'],
       year: 1991,
-      outcome: { trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false },
+      outcome: { trackId: 't1', activeTeamId: 'B', activeCorrect: true, cardWonBy: 'B', nameBonus: false, stealNameBonus: [] },
     });
   });
 

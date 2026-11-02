@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { teamNameOf } from '../host/lobby';
 import type { GuestIntent } from '../host/runtime';
 import type { HostSession, HostSnapshot } from '../host/session';
-import { Timeline, Wordmark } from './components';
+import { TeamIcon, TeamTag, Timeline, Wordmark } from './components';
+import { PauseButton, PauseCover } from './Pause';
 import { PlayPanel } from './PlayPanel';
 import { teamById } from './text';
 
@@ -35,6 +36,7 @@ export function HostBoard({
           <span className="chip live">
             Broadcasting to {online} {online === 1 ? 'player' : 'players'}
           </span>
+          <PauseButton view={view} act={act} />
           {view.phase === 'deciding' && (
             <button type="button" className="btn small" onClick={() => session.command({ type: 'passTurn' })}>
               Pass turn
@@ -69,7 +71,7 @@ export function HostBoard({
             return (
               <section key={id} className={view.turn?.teamId === id ? 'panel active' : 'panel'}>
                 <div className="row">
-                  <span className="headline">{team.name}</span>
+                  <TeamTag teamId={id} name={team.name} me={view.turn?.teamId === id} />
                   <span className="muted">
                     {members.join(', ')} · {team.timeline.length}/{view.settings.cardsToWin} · {team.tokens} tokens
                   </span>
@@ -96,12 +98,15 @@ export function HostBoard({
                   {p.name}
                   {p.isHost ? ' · host' : p.connected ? '' : ' · reconnecting…'}
                 </span>
-                <span className="muted">{teamNameOf(p.teamId)}</span>
+                <span className="muted team-name">
+                  <TeamIcon teamId={p.teamId} /> {teamNameOf(p.teamId)}
+                </span>
               </div>
             ))}
           </section>
         </div>
       </div>
+      <PauseCover view={view} players={players} act={act} onEndGame={() => session.endGame()} />
     </>
   );
 }

@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
-import { NowPlaying, Scores, type SlotProps, Timeline } from './components';
-import { revealHeadline, teamById, winnersHeadline } from './text';
+import { EndCard } from './EndCard';
+import { stillFree } from './stealPicks';
+import { Cover, NowPlaying, Scores, type SlotProps, TeamIcon, Timeline } from './components';
+import { nameBonusLine, revealHeadline, stealTakenNote, teamById, winnersHeadline } from './text';
 
 export interface PlayPanelProps {
   view: GameView;
@@ -13,14 +15,16 @@ export interface PlayPanelProps {
   act: (intent: GuestIntent) => void;
 }
 
-/** Counts down from `totalMs` starting when the component mounts. */
-export function useCountdown(totalMs: number): number {
-  const [end] = useState(() => Date.now() + totalMs);
-  const [left, setLeft] = useState(totalMs);
+/** Counts down from `leftMs` (the host's latest figure); restarts when it changes and holds while not running. */
+export function useCountdown(leftMs: number, running: boolean): number {
+  const [left, setLeft] = useState(leftMs);
   useEffect(() => {
+    setLeft(leftMs);
+    if (!running) return;
+    const end = Date.now() + leftMs;
     const id = setInterval(() => setLeft(Math.max(0, end - Date.now())), 200);
     return () => clearInterval(id);
-  }, [end]);
+  }, [leftMs, running]);
   return left;
 }
 
@@ -35,6 +39,32 @@ export function PlayPanel(props: PlayPanelProps) {
   if (mine && view.phase === 'deciding') return <MyTurn key={turn.seq} {...props} />;
   if (!mine && view.phase === 'stealWindow') return <Steal key={turn.seq} {...props} />;
   return <Watching {...props} />;
+}
+
+function NameFields({
+  title,
+  artist,
+  setTitle,
+  setArtist,
+}: {
+  title: string;
+  artist: string;
+  setTitle: (v: string) => void;
+  setArtist: (v: string) => void;
+}) {
+  const props = { className: 'input', maxLength: 200, autoComplete: 'off', autoCorrect: 'off', autoCapitalize: 'off', spellCheck: false };
+  return (
+    <div className="grid2">
+      <label className="field">
+        Title
+        <input {...props} value={title} onChange={(e) => setTitle(e.target.value)} />
+      </label>
+      <label className="field">
+        Artist
+        <input {...props} value={artist} onChange={(e) => setArtist(e.target.value)} />
+      </label>
+    </div>
+  );
 }
 
 function ErrorLine({ error }: { error: string | null }) {
@@ -61,36 +91,10 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
     <section className="rows">
       <NowPlaying label={`Your turn · ${team.name}`} audio={audio} />
       <h2>Place it on your timeline</h2>
+      <span className="muted">Tap a yellow spot to place the song</span>
       <Timeline cards={team.timeline} slots={slots} />
       <span className="muted">Name it for +1 token (optional)</span>
-      <div className="grid2">
-        <label className="field">
-          Title
-          <input
-            className="input"
-            value={title}
-            maxLength={200}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          Artist
-          <input
-            className="input"
-            value={artist}
-            maxLength={200}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            onChange={(e) => setArtist(e.target.value)}
-          />
-        </label>
-      </div>
+      <NameFields title={title} artist={artist} setTitle={setTitle} setArtist={setArtist} />
       <ErrorLine error={error} />
       <div className="actions sticky-bottom">
         <div className="actions">
@@ -112,13 +116,24 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
 }
 
 function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
-  const [picked, setPicked] = useState<number | null>(null);
-  const left = useCountdown(stealWindowMs);
+  const [picked, setPicked] = useState<ReadonlySet<number>>(() => new Set());
+  const [pressed, setPressed] = useState<number | null>(null);
+  const [title, setTitle] = useState('');
+  const [artist, setArtist] = useState('');
+  const left = useCountdown(view.timerLeftMs ?? stealWindowMs, view.paused === null);
   const turn = view.turn;
   const active = teamById(view, turn?.teamId);
   const me = teamById(view, view.viewerTeamId);
   if (!turn || !active || !me) return null;
-  const myClaim = turn.steals.find((s) => s.teamId === me.id);
+  const answered = turn.answered.includes(me.id);
+  const myClaims = turn.steals.filter((s) => s.teamId === me.id);
+  const toggle = (i: number) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else if (stillFree(next, turn).length < me.tokens) next.add(i);
+      return next;
+    });
   const slots: SlotProps[] = Array.from({ length: active.timeline.length + 1 }, (_, i): SlotProps => {
     if (i === turn.slot) return { state: 'theirs', note: `${active.name}'s pick` };
     const claim = turn.steals.find((s) => s.slot === i);
@@ -127,10 +142,17 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
         ? { state: 'mine', note: 'your steal' }
         : { state: 'taken', note: teamById(view, claim.teamId)?.name };
     }
-    if (myClaim || left === 0) return { state: 'free' };
-    return { state: i === picked ? 'mine' : 'free', onPick: () => setPicked(i) };
+    if (answered || left === 0 || me.tokens < 1) return { state: 'free' };
+    return { state: picked.has(i) ? 'mine' : 'free', onPick: () => toggle(i) };
   });
-  const canPress = picked !== null && !myClaim && me.tokens >= 1 && left > 0;
+  const live = stillFree(picked, turn);
+  const canPress = !answered && live.length <= me.tokens && left > 0;
+  const takenNote = answered && pressed !== null ? stealTakenNote(pressed, myClaims.length) : null;
+  const guess = title.trim() || artist.trim() ? { title, artist } : undefined;
+  const hint =
+    me.tokens > 0
+      ? 'Pick slots (1 token each) and/or name the song, or press TUBESTER! to pass.'
+      : 'No tokens to steal, but you can name the song for +1 token, or press TUBESTER! to pass.';
   const seconds = Math.ceil(left / 1000);
   return (
     <section className="rows stealing">
@@ -143,19 +165,26 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
           <span>{active.name} locked in. Think they're wrong?</span>
         </div>
       </div>
-      <h2>{active.name}'s timeline</h2>
+      <h2 className="team-name">
+        <TeamIcon teamId={active.id} size={22} /> {active.name}'s timeline
+      </h2>
       <Timeline cards={active.timeline} slots={slots} />
+      {!answered && left > 0 && (
+        <>
+          <span className="muted">Name it for +1 token (only if {active.name} didn't)</span>
+          <NameFields title={title} artist={artist} setTitle={setTitle} setArtist={setArtist} />
+        </>
+      )}
       <ErrorLine error={error} />
       <div className="sticky-bottom">
-        <span className="muted">
-          {myClaim ? 'Steal placed. Fingers crossed!' : 'Pick a slot, then press. Costs 1 token.'}
-        </span>
+        <span className="muted">{answered ? `Answer sent. Fingers crossed!${takenNote ? ` ${takenNote}.` : ''}` : hint}</span>
         <button
           type="button"
           className="btn tubester"
           disabled={!canPress}
           onClick={() => {
-            if (picked !== null) act({ type: 'steal', slot: picked });
+            setPressed(live.length);
+            act({ type: 'steal', slots: live, guess });
           }}
         >
           TUBESTER!
@@ -178,7 +207,9 @@ function Watching({ view, audio, act }: PlayPanelProps) {
   return (
     <section className="rows">
       <NowPlaying label={label} audio={audio} />
-      <h2>{active.name}'s timeline</h2>
+      <h2 className="team-name">
+        <TeamIcon teamId={active.id} size={22} /> {active.name}'s timeline
+      </h2>
       <Timeline cards={active.timeline} slots={slots} />
       <BuyButton view={view} act={act} />
     </section>
@@ -199,24 +230,27 @@ function BuyButton({ view, act }: Pick<PlayPanelProps, 'view' | 'act'>) {
 function Reveal({ view }: { view: GameView }) {
   const r = view.reveal;
   if (!r) return null;
-  const active = teamById(view, r.outcome.activeTeamId);
+  const bonus = nameBonusLine(view);
   return (
     <section className="rows">
       <div className="reveal">
+        <Cover url={r.cover} size={150} label={`${r.title} cover`} />
         <span className="kicker">It was</span>
         <span className="big-year">{r.year}</span>
         <span className="song">{r.title}</span>
         <span>{r.artists.join(', ')}</span>
       </div>
       <p className="headline">{revealHeadline(view)}</p>
-      {r.outcome.nameBonus && <p className="muted">{active?.name ?? 'They'} named it: +1 token</p>}
+      {bonus && <p className="muted">{bonus}</p>}
     </section>
   );
 }
 
 function Finished({ view }: { view: GameView }) {
+  const [open, setOpen] = useState(true);
   return (
     <section className="rows">
+      {open && <EndCard view={view} onClose={() => setOpen(false)} />}
       <p className="headline big">{winnersHeadline(view)}</p>
       <Reveal view={view} />
       <Scores view={view} />
