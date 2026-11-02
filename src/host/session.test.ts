@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_LOBBY_SETTINGS } from './lobby';
 import { DEMO_TRACKS } from '../music/demo';
 import { FakeMusicSource, type ToneOutput } from '../music/fake';
 import { type MemoryGuest, MemoryHub } from '../net/memory';
@@ -185,7 +186,7 @@ describe('HostSession game', () => {
     expect(music.played).toHaveLength(1);
     playActiveTurn(session, { 'team-1': lea });
     expect(session.snapshot().view?.phase).toBe('stealWindow');
-    timers.fire(5000);
+    timers.fire(DEFAULT_LOBBY_SETTINGS.stealWindowSec * 1000);
     expect(session.snapshot().view?.phase).toBe('reveal');
     expect(session.snapshot().audio).toBe('stopped');
     timers.fire(REVEAL_MS);
@@ -235,7 +236,7 @@ describe('HostSession game', () => {
     }
     timers.fire(COUNTDOWN_MS);
     playActiveTurn(session, { 'team-1': lea });
-    timers.fire(5000);
+    timers.fire(DEFAULT_LOBBY_SETTINGS.stealWindowSec * 1000);
     timers.fire(REVEAL_MS);
     music.failNext = true;
     timers.fire(COUNTDOWN_MS);
