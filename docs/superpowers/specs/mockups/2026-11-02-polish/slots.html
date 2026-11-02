@@ -1,0 +1,86 @@
+<style>
+  .ph { width: 300px; background:#0F1115; border-radius:22px; padding:14px; font-family: Inter, system-ui, sans-serif; color:#F2F0EA; margin: 0 auto; }
+  .ph h4 { font-family:'Space Grotesk',system-ui; margin:0 0 4px; font-size:15px; color:#F2F0EA; }
+  .ph .hint { font-size:12px; color:#9AA0AC; margin:0 0 10px; }
+  .cd { display:flex; gap:10px; align-items:center; background:#1A1D24; border:1px solid #2A2E37; border-radius:12px; padding:9px 11px; }
+  .cd b { font-family:'Space Grotesk',system-ui; font-size:20px; min-width:50px; }
+  .cd small { display:block; font-size:12px; color:#9AA0AC; }
+  .stack { display:flex; flex-direction:column; gap:6px; }
+  /* current */
+  .s0 { min-height:40px; border:1.5px dashed #3A3F4A; border-radius:12px; color:#9AA0AC; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  /* A */
+  .sa { min-height:46px; border:2px solid #FFD23F; border-radius:12px; color:#FFD23F; font-size:13px; font-weight:600; display:flex; align-items:center; gap:10px; padding:0 12px; background:rgba(255,210,63,.08); }
+  .sa i { font-style:normal; width:26px; height:26px; border-radius:50%; background:#FFD23F; color:#0F1115; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; }
+  .sa.sel { background:#FFD23F; color:#0F1115; }
+  .sa.sel i { background:#0F1115; color:#FFD23F; }
+  /* B */
+  .gap { display:flex; align-items:center; gap:8px; min-height:44px; }
+  .gap::before, .gap::after { content:''; flex:1; height:2px; background:#FFD23F; opacity:.5; }
+  .gap span { border-radius:999px; background:#FFD23F; color:#0F1115; font-weight:700; font-size:12px; padding:9px 14px; white-space:nowrap; }
+  /* C */
+  .mini { display:flex; gap:6px; overflow:hidden; margin-bottom:12px; }
+  .mini div { background:#1A1D24; border:1px solid #2A2E37; border-radius:8px; padding:6px 8px; font-family:'Space Grotesk'; font-weight:700; font-size:15px; }
+  .big { min-height:54px; border-radius:14px; background:#1A1D24; border:2px solid #FFD23F; display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-weight:600; font-size:14px; }
+  .big em { font-style:normal; color:#FFD23F; font-size:20px; }
+</style>
+
+<h2>Where can I tap? Slot styles</h2>
+<p class="subtitle">Today on the left: the dashed boxes blend in. Three ideas to make "put the song here" obvious on a phone. Click the one that feels right.</p>
+
+<div class="cards">
+  <div class="card" data-choice="today">
+    <div class="card-image"><div class="ph">
+      <h4>Your turn</h4><p class="hint">Where does the song go?</p>
+      <div class="stack">
+        <div class="s0">Before 1977</div>
+        <div class="cd"><b>1977</b><div>Dancing Queen<small>ABBA</small></div></div>
+        <div class="s0">Between 1977 and 1999</div>
+        <div class="cd"><b>1999</b><div>No Scrubs<small>TLC</small></div></div>
+        <div class="s0">After 1999</div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>Today</h3><p>Thin dashed outline, grey text. Hard to tell it's a button.</p></div>
+  </div>
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>Your turn</h4><p class="hint">Tap a yellow spot to place the song</p>
+      <div class="stack">
+        <div class="sa"><i>+</i>Before 1977</div>
+        <div class="cd"><b>1977</b><div>Dancing Queen<small>ABBA</small></div></div>
+        <div class="sa sel"><i>+</i>Between 1977 and 1999</div>
+        <div class="cd"><b>1999</b><div>No Scrubs<small>TLC</small></div></div>
+        <div class="sa"><i>+</i>After 1999</div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>A · Yellow buttons with +</h3><p>Same place as today, but solid yellow outline, a "+" badge, and the chosen one fills in.</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>Your turn</h4><p class="hint">Tap "Here" between two songs</p>
+      <div class="stack">
+        <div class="gap"><span>Here · before 1977</span></div>
+        <div class="cd"><b>1977</b><div>Dancing Queen<small>ABBA</small></div></div>
+        <div class="gap"><span>Here · 1977–1999</span></div>
+        <div class="cd"><b>1999</b><div>No Scrubs<small>TLC</small></div></div>
+        <div class="gap"><span>Here · after 1999</span></div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>B · "Here" pills between cards</h3><p>Reads like inserting into a line: a pill on a yellow line in each gap.</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="ph">
+      <h4>Your turn</h4><p class="hint">Your timeline</p>
+      <div class="mini"><div>1977</div><div>1999</div></div>
+      <p class="hint">When was it released?</p>
+      <div class="stack">
+        <div class="big">Before 1977 <em>›</em></div>
+        <div class="big">1977 – 1999 <em>›</em></div>
+        <div class="big">After 1999 <em>›</em></div>
+      </div>
+    </div></div>
+    <div class="card-body"><h3>C · Answer buttons</h3><p>Timeline shown small on top; the choices become big quiz-style buttons below.</p></div>
+  </div>
+</div>
