@@ -174,7 +174,7 @@ These came from a second round of feedback on the branch. They change rules from
 
 - The steal window closes as soon as **every team that can steal has pressed TUBESTER!**.
   - "Can steal" means every team other than the active team, minus teams with 0 tokens.
-  - This is checked again after every steal, so a team that buys a card down to 0 tokens during the window stops counting.
+  - This is checked again after every steal and after every buy, so a team that buys a card down to 0 tokens during the window stops counting (my call).
 - It also closes early when no free slot is left on the active team's timeline (my call).
 - If no team can steal when the active team locks in, the reveal comes straight away instead of after the full window (my call).
 - Otherwise the timer still applies (default 30 s).
@@ -184,6 +184,8 @@ These came from a second round of feedback on the branch. They change rules from
 - During the steal window, a player selects **several slots**, up to their team's token count, then presses **TUBESTER!** once.
   - Each claimed slot costs 1 token.
   - A team presses TUBESTER! **once per turn**.
+  - The phone caps the selection at the token count. The host refuses a press that asks for more slots than the team has tokens, or the same slot twice (my call).
+  - Ending the game reuses the engine's existing "most cards wins, ties shared" finish from deck exhaustion.
 - **Contested slots:**
   - A slot still belongs to the first team whose press reaches the host. Two teams never hold the same slot.
   - If some of the selected slots were taken first, the press **claims the ones that are still free** and charges only for those.
