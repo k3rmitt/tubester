@@ -141,6 +141,12 @@ export class HostSession {
     return this.runtime.command(cmd);
   }
 
+  /** The host stops the game for everyone; allowed while paused. */
+  endGame(): IntentResult {
+    if (!this.runtime) return { ok: false, reason: 'game not started' };
+    return this.runtime.command({ type: 'endGame' });
+  }
+
   /** After repeated playback failures: try the current track again. */
   retryMusic(): void {
     if (!this.runtime || this.runtime.paused) return;
@@ -259,7 +265,14 @@ export class HostSession {
       this.holdAudio();
       return;
     }
-    if (this.held) this.releaseAudio();
+    if (this.held) {
+      if (state.phase === 'deciding' || state.phase === 'stealWindow') this.releaseAudio();
+      else {
+        // Reveal or ended while paused: nothing to resume, the music stays off.
+        this.held = null;
+        this.audio = 'stopped';
+      }
+    }
     const live = state.phase === 'deciding' || state.phase === 'stealWindow';
     const current = live ? (state.turn?.trackId ?? null) : null;
     if (current === this.playingTrack) return;

@@ -81,6 +81,8 @@ function handle(s: GameState, a: Action): string | null {
       return steal(s, a.teamId, a.slots);
     case 'closeSteals':
       return closeSteals(s);
+    case 'endGame':
+      return endGame(s);
     case 'nextTurn':
       return nextTurn(s);
     case 'buy':
@@ -241,6 +243,15 @@ function closeSteals(s: GameState): string | null {
   s.lastOutcome = { trackId, activeTeamId: teamId, activeCorrect, cardWonBy, nameBonus: nameCorrect };
   s.phase = 'reveal';
   if (cardWonBy) checkWin(s, cardWonBy);
+  return null;
+}
+
+/** The host stops the game: most cards wins, ties shared; the song in play is never revealed. */
+function endGame(s: GameState): string | null {
+  if (s.phase !== 'deciding' && s.phase !== 'stealWindow' && s.phase !== 'reveal') return 'nothing to end';
+  if (s.phase !== 'reveal' && s.turn) s.discard.push(s.turn.trackId);
+  s.lastOutcome = null;
+  finishByLongest(s);
   return null;
 }
 

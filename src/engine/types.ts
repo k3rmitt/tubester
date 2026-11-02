@@ -77,6 +77,7 @@ export type Action =
   | { type: 'steal'; teamId: TeamId; slots: number[] }
   | { type: 'closeSteals' }
   | { type: 'nextTurn' }
-  | { type: 'buy'; teamId: TeamId };
+  | { type: 'buy'; teamId: TeamId }
+  | { type: 'endGame' };
 
 export type Result = { ok: true; state: GameState } | { ok: false; reason: string };

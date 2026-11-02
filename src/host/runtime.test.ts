@@ -343,3 +343,18 @@ describe('HostRuntime steals', () => {
     expect(rt.viewFor('p1').timerLeftMs).toBe(5000);
   });
 });
+
+describe('HostRuntime endGame', () => {
+  it('is the one command allowed while paused, and clears the pause', () => {
+    const { deps, pending } = fakeDeps();
+    const rt = new HostRuntime(newGame(), PLAYERS, deps);
+    rt.handleIntent('p2', { type: 'place', slot: 1 });
+    rt.handleIntent('p2', { type: 'lockIn' });
+    rt.handleIntent('p1', { type: 'pause' });
+    expect(rt.command({ type: 'endGame' })).toEqual({ ok: true });
+    expect(rt.paused).toBeNull();
+    expect(rt.state.phase).toBe('finished');
+    expect(pending()).toEqual([]);
+    expect(JSON.stringify(rt.viewFor('p1'))).not.toContain('Smells Like Teen Spirit');
+  });
+});

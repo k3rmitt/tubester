@@ -419,4 +419,22 @@ describe('HostSession pause', () => {
     expect(session.snapshot().view?.turn?.seq).not.toBe(seq);
     expect(session.snapshot().audio).toBe('countdown');
   });
+
+  it('the host can end a paused game', () => {
+    const { session, join, timers, music } = setup();
+    const lea = join('p1', 'Léa');
+    let resumed = 0;
+    music.resume = async () => {
+      resumed++;
+    };
+    session.startGame(TRACKS);
+    timers.fire(COUNTDOWN_MS);
+    session.act({ type: 'pause' });
+    expect(session.endGame()).toEqual({ ok: true });
+    expect(resumed).toBe(0);
+    expect(session.snapshot().audio).toBe('stopped');
+    expect(session.snapshot().view?.phase).toBe('finished');
+    const last = lea.last();
+    expect(last?.t === 'state' && last.view.phase).toBe('finished');
+  });
 });

@@ -12,7 +12,7 @@ export type GuestIntent =
   | { type: 'pause' }
   | { type: 'resume' };
 
-export type HostCommand = { type: 'trackFailed' } | { type: 'passTurn' } | { type: 'nextTurn' };
+export type HostCommand = { type: 'trackFailed' } | { type: 'passTurn' } | { type: 'nextTurn' } | { type: 'endGame' };
 
 export type IntentResult = { ok: true } | { ok: false; reason: string };
 
@@ -119,7 +119,8 @@ export class HostRuntime {
   }
 
   command(cmd: HostCommand): IntentResult {
-    if (this.pause) return { ok: false, reason: 'game is paused' };
+    if (this.pause && cmd.type !== 'endGame') return { ok: false, reason: 'game is paused' };
+    if (cmd.type === 'endGame') this.pause = null;
     return this.dispatch(cmd);
   }
 
