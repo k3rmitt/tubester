@@ -32,5 +32,15 @@ export function winnersHeadline(view: GameView): string {
   if (view.phase !== 'finished') return '';
   if (view.viewerTeamId && view.winnerIds.includes(view.viewerTeamId)) return 'You win!';
   const names = view.winnerIds.map((id) => teamById(view, id)?.name ?? id);
-  return `${names.join(' & ')} ${names.length === 1 ? 'wins' : 'win'}!`;
+  if (names.length === 1) return `${names[0]} wins!`;
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)} win!`;
+}
+
+/** Winners get the spotlight; everyone else gets the dimmed card. */
+export function endCardTone(view: GameView): 'win' | 'lose' {
+  return view.viewerTeamId !== null && view.winnerIds.includes(view.viewerTeamId) ? 'win' : 'lose';
+}
+
+export function cardCount(n: number): string {
+  return n === 1 ? '1 card' : `${n} cards`;
 }

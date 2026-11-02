@@ -58,7 +58,7 @@ test('three players play a short game to the end', async ({ browser }) => {
 
   let sawReveal = false;
   for (let i = 0; i < 40; i++) {
-    if (await host.page.getByText(WIN).isVisible()) break;
+    if (await host.page.getByText(WIN).first().isVisible()) break;
     let player: Page | undefined;
     for (const p of pages) if (await p.getByRole('button', { name: 'Lock in' }).isVisible()) player = p;
     if (!player) {
@@ -76,7 +76,7 @@ test('three players play a short game to the end', async ({ browser }) => {
     }
   }
 
-  for (const p of pages) await expect(p.getByText(WIN)).toBeVisible({ timeout: 15_000 });
+  for (const p of pages) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
   expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
   expect(sawReveal || (await lea.getByText('It was', { exact: true }).isVisible())).toBe(true);
 });

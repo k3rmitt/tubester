@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GuestIntent } from '../host/runtime';
 import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
+import { EndCard } from './EndCard';
 import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
 import { revealHeadline, teamById, winnersHeadline } from './text';
 
@@ -217,8 +218,10 @@ function Reveal({ view }: { view: GameView }) {
 }
 
 function Finished({ view }: { view: GameView }) {
+  const [open, setOpen] = useState(true);
   return (
     <section className="rows">
+      {open && <EndCard view={view} onClose={() => setOpen(false)} />}
       <p className="headline big">{winnersHeadline(view)}</p>
       <Reveal view={view} />
       <Scores view={view} />

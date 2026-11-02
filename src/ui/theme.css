@@ -117,3 +117,27 @@ table.review td.warn { color: var(--steal-text); font-weight: 600; }
 .cover.mystery { display: inline-flex; align-items: center; justify-content: center; background: #232733; border: 1px dashed var(--line-strong); color: var(--line-strong); font-family: var(--display); font-weight: 700; line-height: 1; }
 .reveal .cover { width: 150px; height: 150px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); margin-bottom: 6px; }
 .reveal .cover.placeholder { background: var(--bg); border-color: var(--bg); }
+
+/* End-of-game card */
+.end-layer { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+.end-scrim { position: absolute; inset: 0; background: rgba(15, 17, 21, 0.72); animation: end-fade 0.3s both; }
+.end-dim { position: absolute; inset: 0; background: #000; animation: end-dim 1.5s 0.2s both; }
+.end-beam { position: absolute; top: -10vh; left: 50%; width: 140vmax; height: 140vh; margin-left: -70vmax; background: conic-gradient(from 165deg at 50% 0, transparent 0deg, rgba(255, 210, 63, 0.32) 15deg, transparent 30deg); transform-origin: 50% 0; animation: end-sweep 1.4s ease-out both; pointer-events: none; }
+.end-confetti { position: absolute; inset: 0; pointer-events: none; }
+.end-confetti i { position: absolute; top: -16px; width: 8px; height: 13px; border-radius: 2px; background: var(--me); animation: end-fall 2.4s linear both; }
+.end-card { position: relative; width: min(340px, 100%); background: var(--surface); border-radius: 20px; padding: 28px 20px 20px; display: flex; flex-direction: column; gap: 10px; text-align: center; animation: end-pop 0.5s 0.2s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.end-card h2 { font-size: 34px; line-height: 1.1; overflow-wrap: anywhere; }
+.end-layer.win .end-card { box-shadow: 0 0 0 2px var(--me), 0 0 48px rgba(255, 210, 63, 0.35); }
+.end-layer.win .end-card h2 { color: var(--me); }
+.end-layer.lose .end-card { box-shadow: 0 0 0 1px var(--line-strong); }
+.end-layer.lose .end-card h2 { color: var(--other); }
+@keyframes end-fade { from { opacity: 0; } }
+@keyframes end-dim { from { opacity: 0; } to { opacity: 0.35; } }
+@keyframes end-sweep { from { transform: rotate(-35deg); opacity: 0; } 60% { opacity: 1; } to { transform: rotate(0); } }
+@keyframes end-fall { to { transform: translateY(110vh) rotate(var(--r)); } }
+@keyframes end-pop { from { opacity: 0; transform: scale(0.5); } }
+@media (prefers-reduced-motion: reduce) {
+  .end-beam, .end-confetti { display: none; }
+  .end-scrim, .end-dim, .end-card { animation: none; }
+  .end-dim { opacity: 0.35; }
+}

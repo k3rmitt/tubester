@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, run, teamOf } from '../engine/testkit';
 import type { GameState } from '../engine/types';
 import { toView } from '../host/view';
-import { connectionHeadline, revealHeadline, slotLabel, winnersHeadline } from './text';
+import { cardCount, connectionHeadline, endCardTone, revealHeadline, slotLabel, winnersHeadline } from './text';
 
 const reveal = (g: GameState, viewer: string | null) => toView(g, {}, viewer);
 const lockAndClose = (g: GameState, slot: number, steals: { teamId: string; slot: number }[] = []) =>
@@ -50,6 +50,31 @@ describe('winnersHeadline', () => {
     expect(winnersHeadline(reveal(g, 'B'))).toBe('You win!');
     expect(winnersHeadline(reveal(g, 'A'))).toBe('Cassette wins!');
     expect(winnersHeadline(reveal(newGame(), 'A'))).toBe('');
+  });
+
+  it('joins tied winners with and', () => {
+    const v = reveal(lockAndClose(newGame({ cardsToWin: 2 }), 1), 'B');
+    const names = (ids: string[]) => winnersHeadline({ ...v, viewerTeamId: 'X', winnerIds: ids });
+    expect(names(['A', 'B'])).toBe(`${v.teams[0].name} and ${v.teams[1].name} win!`);
+    expect(names(['A', 'B', 'C'])).toBe(`${v.teams[0].name}, ${v.teams[1].name} and ${v.teams[2].name} win!`);
+    expect(winnersHeadline({ ...v, winnerIds: ['A', 'B'] })).toBe('You win!');
+  });
+});
+
+describe('cardCount', () => {
+  it('uses the singular for one card', () => {
+    expect(cardCount(1)).toBe('1 card');
+    expect(cardCount(0)).toBe('0 cards');
+    expect(cardCount(10)).toBe('10 cards');
+  });
+});
+
+describe('endCardTone', () => {
+  it('is the win tone only for a winning viewer', () => {
+    const g = lockAndClose(newGame({ cardsToWin: 2 }), 1);
+    expect(endCardTone(reveal(g, 'B'))).toBe('win');
+    expect(endCardTone(reveal(g, 'A'))).toBe('lose');
+    expect(endCardTone(reveal(g, null))).toBe('lose');
   });
 });
 
