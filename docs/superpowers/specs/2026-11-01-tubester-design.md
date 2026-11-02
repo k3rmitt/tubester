@@ -99,7 +99,7 @@ Deck = shuffled reviewed tracks. Each team receives one face-up card. Team with 
 5. **Win check** — first team whose timeline reaches the target (starting card counts) wins. Otherwise next team.
 
 ### Buy
-Any team, any time except during reveal: −3 tokens → host draws the next deck track and inserts it at its correct position on the buyer's timeline (no guessing). Does not consume the current turn's track.
+Any team except the active one (during its own turn), any time except during reveal: −3 tokens → host draws the next deck track and inserts it at its correct position on the buyer's timeline (no guessing). Does not consume the current turn's track.
 
 ### End conditions
 Target reached (winner). Deck exhausted → longest timeline wins; ties shared.
@@ -145,7 +145,7 @@ Host → guest:
 |---|---|
 | Track fails to play | Auto-skip to next track; no token cost |
 | Deck exhausted | Game ends; longest timeline wins |
-| Capture ended ("Stop sharing") | Game pauses; host sees **Resume broadcast** |
+| Capture ended ("Stop sharing") | Game keeps running (no pause, decided 2026-11-02); host sees a **Resume broadcast** banner and can **Pass turn** |
 | Guest disconnects | Team state kept; reconnect with same `playerId` (localStorage) restores view + audio |
 | Active team fully offline | Host sees **Pass turn** |
 | Host reloads | Restore state from localStorage; reclaim same PeerJS ID with backoff; guests auto-retry up to 2 min; host re-shares tab |

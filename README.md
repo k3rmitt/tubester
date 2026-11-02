@@ -5,6 +5,7 @@ A remote music-timeline party game. The host plays songs from their Spotify (or 
 - Play: https://k3rmitt.github.io/tubester/
 - Host: desktop Chrome or Edge (Spotify Premium for real songs). Guests: any modern browser, no account.
 - Spotify setup: [docs/spotify-setup.md](docs/spotify-setup.md)
+- Status, decisions and backlog: [docs/STATUS.md](docs/STATUS.md)
 - Design: [docs/superpowers/specs/2026-11-01-tubester-design.md](docs/superpowers/specs/2026-11-01-tubester-design.md)
 
 ## Develop
