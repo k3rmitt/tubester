@@ -1,12 +1,45 @@
 import { type ReactNode, useState } from 'react';
 import type { CardView, GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
+import { TEAM_ICONS } from './teamIcons';
 import { slotLabel, teamById } from './text';
 
 export function Wordmark({ big = false }: { big?: boolean }) {
   return (
     <span className={big ? 'wordmark big' : 'wordmark'}>
       TUBE<span>STER</span>
+    </span>
+  );
+}
+
+/** A team's logo; drawn in the current text colour. */
+export function TeamIcon({ teamId, size = 16 }: { teamId: string; size?: number }) {
+  const markup = TEAM_ICONS[teamId];
+  if (!markup) return null;
+  return (
+    <svg
+      className="team-icon"
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: static drawings from teamIcons.ts, never user input
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
+  );
+}
+
+/** Record-shop tag: the team logo above its name in capitals. */
+export function TeamTag({ teamId, name, me = false }: { teamId: string; name: string; me?: boolean }) {
+  return (
+    <span className={me ? 'team-tag me' : 'team-tag'}>
+      <TeamIcon teamId={teamId} size={26} />
+      <b>{name}</b>
     </span>
   );
 }
@@ -31,7 +64,7 @@ export function Scores({ view }: { view: GameView }) {
         if (!team) return null;
         return (
           <span key={id} className={id === view.viewerTeamId ? 'chip me' : 'chip'}>
-            {team.name} {team.timeline.length}/{view.settings.cardsToWin}
+            <TeamIcon teamId={id} /> {team.name} {team.timeline.length}/{view.settings.cardsToWin}
           </span>
         );
       })}

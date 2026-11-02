@@ -4,7 +4,7 @@ import { GuestSession, type GuestSnapshot, loadIdentity } from '../guest/session
 import type { GuestIntent } from '../host/runtime';
 import { teamNameOf } from '../host/lobby';
 import { createGuestTransport } from '../net/peer';
-import { Disc, Scores, TokenChip, Wordmark } from './components';
+import { Disc, Scores, TeamIcon, TokenChip, Wordmark } from './components';
 import { NAME_KEY } from './keys';
 import { PlayPanel } from './PlayPanel';
 import { connectionHeadline, teamById } from './text';
@@ -135,7 +135,9 @@ function GuestLobby({ snap }: { snap: GuestSnapshot }) {
                 {p.isHost ? ' · host' : ''}
                 {p.id === snap.playerId ? ' (you)' : ''}
               </span>
-              <span className="muted">{teamNameOf(p.teamId)}</span>
+              <span className="muted team-name">
+                <TeamIcon teamId={p.teamId} /> {teamNameOf(p.teamId)}
+              </span>
             </div>
           ))}
         </div>

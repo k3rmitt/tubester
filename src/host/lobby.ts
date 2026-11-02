@@ -2,7 +2,7 @@ import type { TeamSetup } from '../engine/game';
 
 export const MAX_PLAYERS = 8;
 
-export const TEAMS = ['Vinyl', 'Cassette', 'Mixtape', 'Jukebox', 'Radio', 'Walkman', 'Turntable', 'Boombox'].map(
+export const TEAMS = ['Vinyl', 'Cassette', 'Mixtape', 'Jukebox', 'Radio', 'Walkman', 'MiniDisc', 'Boombox'].map(
   (name, i) => ({ id: `team-${i}`, name }),
 );
 

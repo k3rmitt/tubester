@@ -4,7 +4,7 @@ import type { GameView } from '../host/view';
 import type { AudioState } from '../net/protocol';
 import { EndCard } from './EndCard';
 import { stillFree } from './stealPicks';
-import { Cover, NowPlaying, Scores, type SlotProps, Timeline } from './components';
+import { Cover, NowPlaying, Scores, type SlotProps, TeamIcon, Timeline } from './components';
 import { nameBonusLine, revealHeadline, stealTakenNote, teamById, winnersHeadline } from './text';
 
 export interface PlayPanelProps {
@@ -165,7 +165,9 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
           <span>{active.name} locked in. Think they're wrong?</span>
         </div>
       </div>
-      <h2>{active.name}'s timeline</h2>
+      <h2 className="team-name">
+        <TeamIcon teamId={active.id} size={22} /> {active.name}'s timeline
+      </h2>
       <Timeline cards={active.timeline} slots={slots} />
       {!answered && left > 0 && (
         <>
@@ -205,7 +207,9 @@ function Watching({ view, audio, act }: PlayPanelProps) {
   return (
     <section className="rows">
       <NowPlaying label={label} audio={audio} />
-      <h2>{active.name}'s timeline</h2>
+      <h2 className="team-name">
+        <TeamIcon teamId={active.id} size={22} /> {active.name}'s timeline
+      </h2>
       <Timeline cards={active.timeline} slots={slots} />
       <BuyButton view={view} act={act} />
     </section>

@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef } from 'react';
 import type { GameView } from '../host/view';
+import { TeamTag } from './components';
 import { cardCount, endCardTone, teamById, winnersHeadline } from './text';
 
 /** Fixed confetti layout (left %, delay s, rotation deg) so every screen gets the same sprinkle. */
@@ -45,6 +46,11 @@ export function EndCard({ view, onClose }: { view: GameView; onClose: () => void
         <div className="end-dim" />
       )}
       <div className="end-card" role="dialog" aria-modal="true" aria-labelledby="end-title">
+        <div className="end-tags">
+          {view.winnerIds.map((id) => (
+            <TeamTag key={id} teamId={id} name={teamById(view, id)?.name ?? id} me={tone === 'win'} />
+          ))}
+        </div>
         <h2 id="end-title">{winnersHeadline(view)}</h2>
         {line && <p className="muted">{line}</p>}
         <button ref={close} type="button" className="btn" onClick={onClose}>

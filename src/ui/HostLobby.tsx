@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { canStart, MAX_PLAYERS, TEAMS } from '../host/lobby';
 import type { GameTrack, HostSession, HostSnapshot } from '../host/session';
-import { Wordmark } from './components';
+import { TeamIcon, Wordmark } from './components';
 import { joinUrl } from './router';
 
 export function HostLobby({
@@ -54,6 +54,7 @@ export function HostLobby({
                   {p.name}
                   {p.isHost ? ' · host' : ''}
                 </span>
+                <TeamIcon teamId={p.teamId} size={22} />
                 <select
                   className="input"
                   aria-label={`Team for ${p.name}`}

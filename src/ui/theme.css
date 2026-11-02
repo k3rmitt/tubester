@@ -218,3 +218,12 @@ table.review td.warn { color: var(--steal-text); font-weight: 600; }
 .btn.pause-resume { flex: none; width: min(320px, 100%); min-height: 64px; font-size: 20px; }
 .btn.pause-secondary { flex: none; width: min(320px, 100%); }
 .btn.primary.danger { background: var(--steal); }
+
+/* Team logos */
+.team-icon { flex: none; vertical-align: -3px; }
+.chip .team-icon { margin-right: 2px; }
+.team-name { display: inline-flex; align-items: center; gap: 6px; }
+.team-tag { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 84px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--other); }
+.team-tag b { font-family: var(--display); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text); }
+.team-tag.me { border-color: var(--me); color: var(--me); }
+.end-tags { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
