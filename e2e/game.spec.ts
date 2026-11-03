@@ -144,3 +144,21 @@ test('the participant tutorial shows once, can be skipped and reopened', async (
   await page.getByRole('button', { name: 'How to play' }).click();
   await expect(page.getByRole('dialog').getByText('A song plays on your phone')).toBeVisible();
 });
+
+test("the host tutorial hands over to the players' tutorial from its first step", async ({ browser }) => {
+  const ctx = await browser.newContext({ ...devices['Desktop Chrome'] });
+  const page = await ctx.newPage();
+  await page.goto('./#/');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Host on this computer')).toBeVisible({ timeout: 15_000 });
+  for (let i = 0; i < 5; i++) await dialog.getByRole('button', { name: 'Next' }).click();
+  await dialog.getByRole('button', { name: "See the players' tutorial" }).click();
+  await expect(dialog.getByText('A song plays on your phone')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Skip tutorial' }).click();
+
+  await page.reload();
+  await expect(page.getByLabel('Your name')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'How to play' }).waitFor();
+  await page.waitForTimeout(6000); // past the splash: neither tutorial comes back
+  await expect(page.getByRole('dialog')).toBeHidden();
+});

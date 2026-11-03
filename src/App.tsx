@@ -43,17 +43,25 @@ export function App() {
   });
   useTutorialRequests(setTutorial);
   const splashDone = useCallback(() => setSplash('none'), []);
-  const tutorialDone = useCallback(() => {
-    setTutorial((role) => {
-      const storage = safeStorage();
-      if (role && storage) markSeen(storage, role);
-      return null;
-    });
+  const markTutorialSeen = useCallback((role: TutorialRole) => {
+    const storage = safeStorage();
+    if (storage) markSeen(storage, role);
   }, []);
+  const tutorialDone = useCallback(() => {
+    if (tutorial) markTutorialSeen(tutorial);
+    setTutorial(null);
+  }, [tutorial, markTutorialSeen]);
+  const tutorialSwitch = useCallback(
+    (next: TutorialRole) => {
+      if (tutorial) markTutorialSeen(tutorial);
+      setTutorial(next);
+    },
+    [tutorial, markTutorialSeen],
+  );
   return (
     <>
       {route.name === 'host' ? <HostApp /> : route.name === 'join' ? <GuestApp key={route.code} code={route.code} /> : <Home />}
-      {splash === 'none' && tutorial && <Tutorial role={tutorial} onClose={tutorialDone} onSwitch={setTutorial} />}
+      {splash === 'none' && tutorial && <Tutorial key={tutorial} role={tutorial} onClose={tutorialDone} onSwitch={tutorialSwitch} />}
       {splash !== 'none' && <Splash mode={splash} onDone={splashDone} />}
     </>
   );
