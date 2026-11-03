@@ -1,0 +1,157 @@
+<style>
+  .wrap { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+  .dev { background:#0F1115; color:#F2F0EA; font-family:Inter,system-ui,sans-serif; border-radius:22px; position:relative; overflow:hidden; display:flex; flex-direction:column; }
+  .phone { width:320px; height:600px; }
+  .laptop { width:560px; height:400px; border-radius:14px; }
+  .cap { text-align:center; font-size:13px; color:#6b7280; margin-top:8px; }
+  .top { display:flex; justify-content:space-between; align-items:center; padding:14px 16px 0; }
+  .top b { font-family:'Space Grotesk',system-ui; font-size:15px; letter-spacing:.02em; }
+  .top b span { color:#FFD23F; }
+  .skip { background:none; border:1px solid #3A3F4A; color:#C9CDD4; border-radius:999px; padding:7px 12px; font-size:12px; cursor:pointer; }
+  .steps { flex:1; position:relative; }
+  .step { position:absolute; inset:0; padding:12px 20px; display:none; flex-direction:column; gap:12px; }
+  .step.on { display:flex; animation: in .25s ease-out; }
+  @keyframes in { from { opacity:0; transform:translateX(16px); } }
+  .laptop .step { flex-direction:row; gap:22px; align-items:center; padding:12px 28px; }
+  .laptop .step .txt { flex:1; }
+  .art { background:#1A1D24; border:1px solid #2A2E37; border-radius:16px; min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:14px; }
+  .laptop .art { width:230px; min-height:220px; flex:none; }
+  .kick { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#FFD23F; font-weight:700; }
+  h3 { font-family:'Space Grotesk',system-ui; font-size:24px; margin:0; line-height:1.15; }
+  p { margin:0; color:#C9CDD4; font-size:14px; line-height:1.45; }
+  p b { color:#F2F0EA; }
+  .foot { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 16px; }
+  .dots { display:flex; gap:6px; }
+  .dots i { width:7px; height:7px; border-radius:50%; background:#3A3F4A; }
+  .dots i.on { background:#FFD23F; width:18px; border-radius:4px; }
+  .nav { display:flex; gap:8px; }
+  .btn { border-radius:12px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; border:1px solid #3A3F4A; background:none; color:#F2F0EA; }
+  .btn.p { background:#FFD23F; color:#0F1115; border:none; font-family:'Space Grotesk',system-ui; }
+  /* mini UI bits */
+  .slot { width:100%; border:2px solid #FFD23F; border-radius:10px; padding:7px 10px; color:#FFD23F; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; background:rgba(255,210,63,.08); }
+  .slot i { font-style:normal; width:18px; height:18px; border-radius:50%; background:#FFD23F; color:#0F1115; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
+  .slot.sel { background:#FFD23F; color:#0F1115; } .slot.sel i { background:#0F1115; color:#FFD23F; }
+  .slot.or { border-color:#FF8A4C; color:#FF8A4C; background:rgba(255,138,76,.08); } .slot.or i { background:#FF8A4C; }
+  .card { width:100%; border:1px solid #2A2E37; border-radius:10px; padding:7px 10px; display:flex; gap:10px; align-items:center; font-size:12px; background:#0F1115; }
+  .card b { font-family:'Space Grotesk'; font-size:17px; }
+  .tb { width:100%; border-radius:12px; background:#FF8A4C; color:#0F1115; font-family:'Space Grotesk'; font-weight:700; font-size:20px; letter-spacing:1px; text-align:center; padding:10px; }
+  .q { width:74px; height:74px; border-radius:10px; border:1px dashed #3A3F4A; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-size:40px; color:#3A3F4A; background:#232733; }
+  .eq { display:flex; gap:3px; align-items:flex-end; height:22px; } .eq i { width:4px; background:#FFD23F; border-radius:2px; animation: eq .9s infinite ease-in-out; }
+  .eq i:nth-child(1){height:8px} .eq i:nth-child(2){height:18px;animation-delay:.2s} .eq i:nth-child(3){height:12px;animation-delay:.4s} .eq i:nth-child(4){height:20px;animation-delay:.1s}
+  @keyframes eq { 50% { transform:scaleY(.4); } }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .chip { border-radius:999px; padding:5px 10px; font-size:12px; background:#0F1115; border:1px solid #2A2E37; }
+  .chip.me { background:#FFD23F; color:#0F1115; border:none; font-weight:700; }
+  .tok { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:5px 10px; font-size:12px; border:1px solid #2A2E37; background:#0F1115; }
+  .in { width:100%; height:30px; border-radius:8px; border:1px solid #2A2E37; background:#0F1115; font-size:12px; color:#9AA0AC; display:flex; align-items:center; padding:0 10px; }
+  .mini { font-size:11px; color:#9AA0AC; text-align:center; }
+  .row2 { display:flex; gap:6px; width:100%; }
+  .big { font-family:'Space Grotesk'; font-size:26px; font-weight:700; }
+  .link { font-family:ui-monospace,monospace; font-size:12px; background:#0F1115; border:1px solid #2A2E37; border-radius:8px; padding:6px 10px; }
+</style>
+
+<h2>Tutorial preview (draft text)</h2>
+<p class="subtitle">Shown right after the splash the first time someone opens TUBESTER on that device. Invite link → participant tutorial. Home page / hosting → host tutorial. <b>Skip tutorial</b> is always at the top. Click Next / Back to go through each one.</p>
+
+<div class="wrap">
+  <div>
+    <div class="dev phone" data-tut>
+      <div class="top"><b>TUBE<span>STER</span> · How to play</b><button class="skip">Skip tutorial</button></div>
+      <div class="steps">
+        <div class="step">
+          <div class="art"><div class="q">?</div><div class="eq"><i></i><i></i><i></i><i></i></div><div class="mini">Mystery track</div></div>
+          <span class="kick">1 · Listen</span><h3>A song plays on your phone</h3>
+          <p>Nobody sees the title or the year. Turn your sound on and listen.</p>
+        </div>
+        <div class="step">
+          <div class="art"><div class="slot"><i>+</i>Before 1984</div><div class="card"><b>1984</b>Purple Rain</div><div class="slot sel"><i>+</i>After 1984 · your guess</div></div>
+          <span class="kick">2 · Place it</span><h3>Your turn: when was it released?</h3>
+          <p>Tap a <b>yellow spot</b> on your timeline (before, between or after your cards), then <b>Lock in</b>. Right year range = you keep the card.</p>
+        </div>
+        <div class="step">
+          <div class="art"><div class="row2"><div class="in">Title</div><div class="in">Artist</div></div><span class="tok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFD23F" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg> +1 token</span></div>
+          <span class="kick">3 · Name it</span><h3>Know the song? Earn a token</h3>
+          <p>Type the <b>title and the artist</b> before locking in. Both right = <b>+1 token</b>, even if the year is wrong.</p>
+        </div>
+        <div class="step">
+          <div class="art"><div class="slot or"><i>+</i>Between 1977 and 2003</div><div class="tb">TUBESTER!</div></div>
+          <span class="kick">4 · Steal</span><h3>Think they're wrong? TUBESTER!</h3>
+          <p>When another team locks in, pick the spot you think is right (<b>1 token each</b>), and/or name the song, then press <b>TUBESTER!</b>. Nothing to offer? Press it to pass. If they're wrong and you're right, the card is yours.</p>
+        </div>
+        <div class="step">
+          <div class="art"><span class="tok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFD23F" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg> 2</span><div class="mini">Skip a song: 1 token<br>Buy a card: 3 tokens</div></div>
+          <span class="kick">5 · Tokens</span><h3>Spend your tokens wisely</h3>
+          <p>Tokens let you <b>steal</b>, <b>skip</b> a song you don't like on your turn, or <b>buy</b> a card that goes straight onto your timeline.</p>
+        </div>
+        <div class="step">
+          <div class="art"><div class="chips"><span class="chip me">Cassette 10/10</span><span class="chip">Vinyl 7/10</span></div><div class="big" style="color:#FFD23F">You win!</div></div>
+          <span class="kick">6 · Win</span><h3>First to 10 cards wins</h3>
+          <p>Your starting card counts. Anyone can <b>Pause</b> the game at any time. Ready?</p>
+        </div>
+      </div>
+      <div class="foot"><div class="dots"></div><div class="nav"><button class="btn back">Back</button><button class="btn p next">Next</button></div></div>
+    </div>
+    <div class="cap">Participant (phone)</div>
+  </div>
+
+  <div>
+    <div class="dev laptop" data-tut>
+      <div class="top"><b>TUBE<span>STER</span> · Hosting a game</b><button class="skip">Skip tutorial</button></div>
+      <div class="steps">
+        <div class="step">
+          <div class="art"><svg width="96" height="72" viewBox="0 0 24 18" fill="none" stroke="#FFD23F" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="18" height="11.5" rx="1.5"/><path d="M1 16.5h22M9.5 7.2l4 2.3-4 2.3z"/></svg><div class="mini">Music plays here</div></div>
+          <div class="txt"><span class="kick">1 · Your computer is the stage</span><h3>Host on this computer</h3>
+          <p>Use <b>Chrome or Edge</b> on a computer. The music plays here and is streamed to everyone's phone. You play too, with your own team.</p></div>
+        </div>
+        <div class="step">
+          <div class="art"><div class="chips"><span class="chip me">Spotify</span><span class="chip">Demo tones</span></div><div class="mini">Pick a playlist → check the years</div></div>
+          <div class="txt"><span class="kick">2 · Music</span><h3>Pick your playlist</h3>
+          <p>Log in with <b>Spotify Premium</b> and choose one of your playlists. TUBESTER finds each song's original year; check the ones flagged before starting. No Spotify? <b>Demo tones</b> let you try the game.</p></div>
+        </div>
+        <div class="step">
+          <div class="art"><div class="chip">Share this tab</div><div class="mini">[on] Also share tab audio</div></div>
+          <div class="txt"><span class="kick">3 · Broadcast</span><h3>Share this tab's sound</h3>
+          <p>Press <b>Start broadcast</b>, choose <b>this tab</b> and keep <b>"Also share tab audio"</b> on. That's how the music reaches the phones.</p></div>
+        </div>
+        <div class="step">
+          <div class="art"><div class="link">…/#/join/TUBE-7K2Q</div><div class="mini">Up to 8 players · teams optional</div></div>
+          <div class="txt"><span class="kick">4 · Invite</span><h3>Send the link</h3>
+          <p>Share the invite link or room code. Players join from their phones, no account needed. Everyone plays solo, or put people on the same team. Set the cards to win and the steal time, then <b>Start game</b>.</p></div>
+        </div>
+        <div class="step">
+          <div class="art"><div class="chips"><span class="chip">Pause</span><span class="chip">Pass turn</span><span class="chip">Next</span><span class="chip">End game</span></div></div>
+          <div class="txt"><span class="kick">5 · Run the game</span><h3>You're the referee</h3>
+          <p>Each turn: a song plays, the team places it, others can steal, then the answer is revealed. <b>Pause</b> any time, <b>Pass turn</b> if a team is stuck, and from the pause screen you can <b>End game</b>.</p></div>
+        </div>
+        <div class="step">
+          <div class="art"><div class="slot"><i>+</i>Before 1984</div><div class="tb" style="font-size:16px">TUBESTER!</div></div>
+          <div class="txt"><span class="kick">6 · The rules</span><h3>How players play</h3>
+          <p>Place the song on your timeline, name it for a token, steal with <b>TUBESTER!</b> First team to the target wins. <b>See the players' tutorial</b> for the full rules.</p></div>
+        </div>
+      </div>
+      <div class="foot"><div class="dots"></div><div class="nav"><button class="btn back">Back</button><button class="btn p next">Next</button></div></div>
+    </div>
+    <div class="cap">Host (computer)</div>
+  </div>
+</div>
+
+<script>
+  for (const dev of document.querySelectorAll('[data-tut]')) {
+    const steps = [...dev.querySelectorAll('.step')];
+    const dots = dev.querySelector('.dots');
+    const next = dev.querySelector('.next');
+    const back = dev.querySelector('.back');
+    let i = 0;
+    dots.innerHTML = steps.map(() => '<i></i>').join('');
+    const show = () => {
+      steps.forEach((s, k) => s.classList.toggle('on', k === i));
+      [...dots.children].forEach((d, k) => d.classList.toggle('on', k === i));
+      back.style.visibility = i === 0 ? 'hidden' : 'visible';
+      next.textContent = i === steps.length - 1 ? "Let's play" : 'Next';
+    };
+    next.onclick = () => { i = i < steps.length - 1 ? i + 1 : 0; show(); };
+    back.onclick = () => { if (i > 0) { i--; show(); } };
+    dev.querySelector('.skip').onclick = () => { i = 0; show(); };
+    show();
+  }
+</script>
