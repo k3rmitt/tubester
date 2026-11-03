@@ -1,3 +1,4 @@
+import { HowToPlay } from './Tutorial';
 import { type FormEvent, useState } from 'react';
 import { Disc, Wordmark } from './components';
 import { NAME_KEY } from './keys';
@@ -34,6 +35,7 @@ export function Home() {
           Create room
         </button>
         <p className="muted">Demo mode plays test tones instead of real songs. Spotify comes next.</p>
+        <HowToPlay which="host" />
       </form>
     </main>
   );
