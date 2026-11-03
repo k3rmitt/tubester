@@ -1,3 +1,4 @@
+import { HowToPlay } from './Tutorial';
 import { type ReactNode, useState } from 'react';
 import { canStart, MAX_PLAYERS, TEAMS } from '../host/lobby';
 import type { GameTrack, HostSession, HostSnapshot } from '../host/session';
@@ -73,6 +74,7 @@ export function HostLobby({
             ))}
           </div>
           <p className="muted">Everyone plays solo by default. Put players on the same team to share a timeline.</p>
+          <HowToPlay which="host" />
         </section>
         <div className="side">
           <section className="panel">

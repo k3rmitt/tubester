@@ -7,6 +7,7 @@ async function openHost(browser: Browser) {
   const ctx = await browser.newContext({ ...devices['Desktop Chrome'] });
   const page = await ctx.newPage();
   await page.goto('./#/');
+  await page.getByRole('button', { name: 'Skip tutorial' }).click({ timeout: 15_000 });
   await page.getByLabel('Your name').fill('Hervé');
   await page.getByRole('button', { name: 'Create room' }).click();
   const link = (await page.getByTestId('invite-link').textContent({ timeout: 30_000 })) ?? '';
@@ -18,6 +19,7 @@ async function joinGuest(browser: Browser, link: string, name: string, phone: bo
   const ctx = await browser.newContext(phone ? PHONE : { ...devices['Desktop Chrome'] });
   const page = await ctx.newPage();
   await page.goto(link);
+  await page.getByRole('button', { name: 'Skip tutorial' }).click({ timeout: 15_000 });
   await page.getByLabel('Your name').fill(name);
   await page.getByRole('button', { name: 'Join game' }).click();
   await expect(page.getByText("You're in!")).toBeVisible({ timeout: 30_000 });
@@ -118,4 +120,45 @@ test('a guest gets the game back after the host reloads', async ({ browser }) =>
   await expect(host.page.getByText('End the game for everyone?')).toBeVisible();
   await host.page.getByRole('button', { name: 'End game' }).click();
   for (const p of [host.page, lea]) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
+});
+
+test('the participant tutorial shows once, can be skipped and reopened', async ({ browser }) => {
+  const host = await openHost(browser);
+  const ctx = await browser.newContext(PHONE);
+  const page = await ctx.newPage();
+  await page.goto(host.link);
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('A song plays on your phone')).toBeVisible({ timeout: 15_000 });
+  await expect(dialog.getByRole('button', { name: 'Next' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'Next' }).click();
+  await expect(dialog.getByText('Your turn: when was it released?')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Skip tutorial' }).click();
+  await expect(dialog).toBeHidden();
+  expect(await sideScroll(page)).toBeLessThanOrEqual(0);
+
+  await page.reload();
+  await expect(page.getByLabel('Your name')).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(6000); // past the splash: no tutorial this time
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  await page.getByRole('button', { name: 'How to play' }).click();
+  await expect(page.getByRole('dialog').getByText('A song plays on your phone')).toBeVisible();
+});
+
+test("the host tutorial hands over to the players' tutorial from its first step", async ({ browser }) => {
+  const ctx = await browser.newContext({ ...devices['Desktop Chrome'] });
+  const page = await ctx.newPage();
+  await page.goto('./#/');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Host on this computer')).toBeVisible({ timeout: 15_000 });
+  for (let i = 0; i < 5; i++) await dialog.getByRole('button', { name: 'Next' }).click();
+  await dialog.getByRole('button', { name: "See the players' tutorial" }).click();
+  await expect(dialog.getByText('A song plays on your phone')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Skip tutorial' }).click();
+
+  await page.reload();
+  await expect(page.getByLabel('Your name')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'How to play' }).waitFor();
+  await page.waitForTimeout(6000); // past the splash: neither tutorial comes back
+  await expect(page.getByRole('dialog')).toBeHidden();
 });

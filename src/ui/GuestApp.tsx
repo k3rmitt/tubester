@@ -1,3 +1,4 @@
+import { HowToPlay } from './Tutorial';
 import { PauseButton, PauseCover } from './Pause';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { GuestSession, type GuestSnapshot, loadIdentity } from '../guest/session';
@@ -108,6 +109,7 @@ function JoinForm({
       <button type="submit" className="btn primary">
         Join game
       </button>
+      <HowToPlay which="player" />
     </form>
   );
 }
@@ -143,6 +145,7 @@ function GuestLobby({ snap }: { snap: GuestSnapshot }) {
         </div>
       )}
       <p className="muted">Waiting for the host to start…</p>
+      <HowToPlay which="player" />
     </section>
   );
 }

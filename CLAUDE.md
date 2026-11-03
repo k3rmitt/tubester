@@ -26,6 +26,7 @@ Remote music-timeline party game. Live at https://k3rmitt.github.io/tubester/. S
 
 - TypeScript is **7.x (native `tsc`) with no JavaScript API**: tools that need it (typescript-eslint, ts-morph…) won't work. Lint is Biome.
 - React StrictMode is intentionally off (`src/main.tsx`): double-mounted effects open two PeerJS peers fighting for the same room id, and `SpotifyMusicSource.dispose()` is final.
+- macOS file names are case-insensitive: a helper `foo.ts` next to a component `Foo.tsx` breaks `tsc` ("differs only in casing"). Name helpers differently (`splashMode.ts`, `tutorialContent.ts`).
 - Git pushes go out as GitHub account `k3rmitt` via a repo-local credential helper; `gh` commands need `GH_TOKEN=$(gh auth token -u k3rmitt)` (the globally active `gh` account is a work account).
 - Spotify is in Development Mode (Feb 2026 rules): owner needs Premium, max 5 allowlisted hosts, only owned/collaborative playlists are readable, playlist tracks come from `GET /playlists/{id}/items` with entries under `item`.
 
