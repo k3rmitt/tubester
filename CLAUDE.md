@@ -20,6 +20,8 @@ Remote music-timeline party game. Live at https://k3rmitt.github.io/tubester/. S
     npm run typecheck                 # tsc 7 (native)
     npm run build
 
+Add `?demo` to the URL (e.g. `/tubester/?demo#/`) to get the hidden **Demo tones** music source; it is always there when no Spotify client id is configured.
+
 `.env.local` (git-ignored) holds `VITE_SPOTIFY_CLIENT_ID`. Production gets it from the repo variable `SPOTIFY_CLIENT_ID`. See `docs/spotify-setup.md`.
 
 ## Tooling gotchas

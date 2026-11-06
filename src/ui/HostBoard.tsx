@@ -40,7 +40,9 @@ export function HostBoard({
         </span>
         <span className="actions">
           <span className="chip live">
-            Broadcasting to {online} {online === 1 ? 'player' : 'players'}
+            {snap.lobby.musicInRoom ? '' : 'Broadcasting to '}
+            {online} {online === 1 ? 'player' : 'players'}
+            {snap.lobby.musicInRoom ? ' connected' : ''}
           </span>
           <PauseButton view={view} act={act} />
           {view.phase === 'deciding' && (

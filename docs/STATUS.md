@@ -1,12 +1,13 @@
 # TUBESTER — status, decisions and backlog
 
-Last updated: 2026-11-02 (after PR #3).
+Last updated: 2026-11-06 (same-room mode).
 
 ## Status
 
 - **Live:** https://k3rmitt.github.io/tubester/ (deployed by `.github/workflows/deploy.yml` on every push to `main`).
 - **Done:** Plan 1 (core rules, matcher, years, host runtime) · Plan 2 (lobby, PeerJS, screens, e2e) · Plan 3 (Spotify, year review, tab broadcast, deploy).
-- **Tests:** 227 unit tests, 2 Playwright games (demo-tone path), CI on every branch push and PR.
+- **Also shipped:** pause/resume and End game, reworked steals, album covers, splash, team logos, first-run tutorials, **In the room** mode (Spotify Connect device, any host device; demo tones only with `?demo`).
+- **Tests:** 344 unit tests, 5 Playwright tests (demo-tone path), CI on every branch push and PR.
 - **Not yet verified on real devices:** real Spotify login/playback, tab-audio capture, iPhone/Android guests. Run `docs/manual-test.md` with a Premium account.
 
 ## Decisions that differ from the original rules or first spec
@@ -21,7 +22,9 @@ Last updated: 2026-11-02 (after PR #3).
 | Game year = earliest of MusicBrainz and Spotify year; host can edit/exclude in review | Remasters/compilations carry wrong years | — |
 | Each phone has a public player id + private secret; one player per connection; newest tab wins | Player ids are visible to everyone | — |
 | No React StrictMode; lint is Biome; TypeScript 7 native | See `CLAUDE.md` tooling gotchas | — |
-| No host Pause button (only Pass turn, Next, New game) | Scope | Players ask for it |
+| Demo tones only show with `?demo` in the URL (or when Spotify isn't configured) | Normal hosts only need Spotify; tests still use tones | Non-allowlisted people want to try the game |
+| **In the room**: a hidden host tab pauses the game for everyone | A backgrounded phone tab stops the host's timers and connections | Hosts find it annoying |
+| **In the room**: the playing device shows the title (Spotify's UI) | Can't be hidden; the host is warned in the Music panel | — |
 
 ## Backlog
 
