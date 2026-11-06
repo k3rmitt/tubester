@@ -28,6 +28,8 @@ export interface Lobby {
   players: LobbyPlayer[];
   settings: LobbySettings;
   started: boolean;
+  /** The music plays out loud in the room: guests get no audio stream. */
+  musicInRoom: boolean;
 }
 
 export const DEFAULT_LOBBY_SETTINGS: LobbySettings = { cardsToWin: 10, startingTokens: 2, stealWindowSec: 30 };
@@ -45,6 +47,7 @@ export function createLobby(host: { id: string; name: string }): Lobby {
     players: [{ id: host.id, name: host.name, teamId: TEAMS[0].id, connected: true, isHost: true }],
     settings: { ...DEFAULT_LOBBY_SETTINGS },
     started: false,
+    musicInRoom: false,
   };
 }
 
@@ -82,6 +85,11 @@ export function updateSettings(lobby: Lobby, patch: Partial<LobbySettings>): Lob
     settings[key] = Math.min(hi, Math.max(lo, Math.round(v)));
   }
   return { ...lobby, settings };
+}
+
+export function setMusicInRoom(lobby: Lobby, on: boolean): Lobby {
+  if (lobby.started) return lobby;
+  return { ...lobby, musicInRoom: on };
 }
 
 export function teamSetups(lobby: Lobby): TeamSetup[] {
