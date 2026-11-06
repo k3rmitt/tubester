@@ -94,7 +94,7 @@ export function MusicPanel({
           {spotify.error}
         </p>
       )}
-      {spotify.error === NEEDS_RELOGIN && (
+      {spotify.loggedIn && spotify.error === NEEDS_RELOGIN && (
         <button type="button" className="btn small" onClick={spotify.login}>
           Log in with Spotify
         </button>

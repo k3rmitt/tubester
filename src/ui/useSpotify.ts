@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ReviewRow, toReviewRows } from '../host/review';
-import { SpotifyApi, type SpotifyDevice } from '../music/spotify/api';
+import { NEEDS_RELOGIN, SpotifyApi, type SpotifyDevice } from '../music/spotify/api';
 import { NotLoggedInError, SESSION_EXPIRED, SpotifyAuth } from '../music/spotify/auth';
 import { type ConnectDevice, SpotifyConnectSource } from '../music/spotify/connect';
 import { createSpotifyPlayer } from '../music/spotify/sdk';
@@ -94,8 +94,11 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
 
   const refreshDevices = useCallback(() => {
     if (!deps || !loggedIn) return;
-    setError(null);
-    deps.api.devices().then(setDevices, fail);
+    deps.api.devices().then((list) => {
+      setDevices(list);
+      // Only clear the device list's own message: a playlist error must stay visible.
+      setError((e) => (e === NEEDS_RELOGIN ? null : e));
+    }, fail);
   }, [deps, loggedIn, fail]);
 
   useEffect(() => {
@@ -166,6 +169,7 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
     setLoggedIn(false);
     setPlaylists(null);
     setDevices(null);
+    setError(null);
   }, [deps]);
 
   return {
