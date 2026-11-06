@@ -12,7 +12,7 @@ When everyone is in the same room, nobody needs the sound on their own phone: on
 
 - A host chooses where the music is heard: **On everyone's phone** (today's behaviour) or **In the room** (new).
 - In the room + Spotify: TUBESTER drives a Spotify Connect device chosen by the host (the Spotify app on the host's phone, a computer, a Sonos, a TV, a smart speaker…). No tab capture, no Web Playback SDK needed.
-- In the room + Demo tones: the tones play out of the host device's own speaker.
+- Demo tones leave the normal Music panel and become a hidden test mode. (In the room, they play out of the host device's own speaker.)
 - Hosting in the room works from a phone (iOS Safari/Chrome, Android Chrome) and from any desktop browser.
 - Everything else in the game is unchanged: rules, turns, steal window, pause/resume, reveal, end game, reconnects, host reload.
 
@@ -37,7 +37,7 @@ Two choices, in this order:
 1. **Where will people hear the music?**
    - **In the room** — "One device plays the music out loud. Everyone must be in the same room."
    - **On everyone's phone** — "The music plays here and is streamed to each phone. Needs Chrome or Edge on a computer."
-2. **Music source:** Demo tones / Spotify (as today).
+2. **Music source:** Spotify only, for normal hosts. See "Demo tones become a hidden test mode" below.
 
 Default: **In the room** on phones and tablets, and on desktop browsers that can't capture tab audio; **On everyone's phone** on desktop Chrome/Edge. The choice is remembered (localStorage, like the music source). *(Builder's call:)* both choices always stay selectable — a wrong device guess must never lock anyone out. On a device that looks like it can't stream (no `getDisplayMedia`, or a phone/tablet: `navigator.userAgentData.mobile`, an iPhone/iPad/Android user agent, or a Mac user agent with touch points > 1), **On everyone's phone** only carries the note "Needs Chrome or Edge on a computer".
 
@@ -58,7 +58,16 @@ The login asks for one more Spotify permission, `user-read-playback-state` (need
 
 In this mode the Web Playback SDK player is **not** started, so it can't fail on phones. (In on-everyone's-phone mode it starts as today.)
 
-### In the room + Demo tones
+### Demo tones become a hidden test mode
+
+Demo tones started as a test aid. They stay in the code (the end-to-end tests play whole games with them) but leave the normal Music panel.
+
+- The **Demo tones** choice appears only when the URL carries a `demo` flag (e.g. `…/tubester/?demo#/` — exact form is the builder's call, as long as it survives the hash navigation to `#/host` and doesn't clash with the Spotify login redirect), or when Spotify isn't configured at all (no `VITE_SPOTIFY_CLIENT_ID`, as in local dev without `.env.local` and in the e2e run).
+- Otherwise the source is always Spotify; a remembered `demo` choice from before is ignored.
+- A Spotify account that isn't on the development-mode allowlist gets a clear message when Spotify refuses it: "This Spotify account can't host yet. Ask the TUBESTER owner to add it." (instead of a raw error).
+- The e2e tests keep using demo tones; they must still pass, and one of them runs in the room mode.
+
+### In the room + Demo tones (test mode)
 
 The tones play through the host device's speaker (the tone feed is connected to the audio output). No audio track is given to the transport, so no media call goes to guests. The existing **Enable sound** banner covers browsers that block audio until a tap.
 
