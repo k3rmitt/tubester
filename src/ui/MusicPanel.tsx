@@ -3,7 +3,7 @@ import { reviewSummary } from '../host/review';
 import { DEMO_TRACKS } from '../music/demo';
 import { NEEDS_RELOGIN } from '../music/spotify/api';
 import type { ConnectDevice } from '../music/spotify/connect';
-import type { Where } from './musicMode';
+import { isLocalDevice, LOCAL_DEVICE, type Where } from './musicMode';
 import type { SpotifyState } from './useSpotify';
 
 export type MusicMode = 'demo' | 'spotify';
@@ -80,6 +80,7 @@ export function MusicPanel({
       {mode === 'spotify' && (
         <SpotifySteps
           where={where}
+          canPlayHere={streamable}
           spotify={spotify}
           device={device}
           setDevice={setDevice}
@@ -93,7 +94,7 @@ export function MusicPanel({
           {spotify.error}
         </p>
       )}
-      {spotify.error === NEEDS_RELOGIN && (
+      {spotify.loggedIn && spotify.error === NEEDS_RELOGIN && (
         <button type="button" className="btn small" onClick={spotify.login}>
           Log in with Spotify
         </button>
@@ -109,6 +110,7 @@ export function MusicPanel({
 
 function SpotifySteps({
   where,
+  canPlayHere,
   spotify,
   device,
   setDevice,
@@ -117,6 +119,7 @@ function SpotifySteps({
   onReview,
 }: {
   where: Where;
+  canPlayHere: boolean;
   spotify: SpotifyState;
   device: ConnectDevice | null;
   setDevice: (d: ConnectDevice | null) => void;
@@ -173,7 +176,7 @@ function SpotifySteps({
         </div>
       )}
       {where === 'room' ? (
-        <DevicePicker spotify={spotify} device={device} setDevice={setDevice} />
+        <DevicePicker spotify={spotify} canPlayHere={canPlayHere} device={device} setDevice={setDevice} />
       ) : (
         <Broadcast spotify={spotify} broadcast={broadcast} onStartBroadcast={onStartBroadcast} />
       )}
@@ -188,18 +191,25 @@ const DEVICE_HELP = "Don't see your device? Open the Spotify app on it, play any
 
 function DevicePicker({
   spotify,
+  canPlayHere,
   device,
   setDevice,
 }: {
   spotify: SpotifyState;
+  /** Desktop: the in-tab player can play out loud here, no device to find. */
+  canPlayHere: boolean;
   device: ConnectDevice | null;
   setDevice: (d: ConnectDevice | null) => void;
 }) {
-  const { devices, refreshDevices } = spotify;
+  const { refreshDevices } = spotify;
+  const local = isLocalDevice(device);
   useEffect(() => {
-    refreshDevices();
-  }, [refreshDevices]);
-  const listed = devices?.some((d) => d.id === device?.id) ?? false;
+    if (!local) refreshDevices();
+  }, [refreshDevices, local]);
+  // Our own tab shows up as a Connect device too ("TUBESTER"): This computer already covers it.
+  const tabId = spotify.source?.deviceIdNow ?? null;
+  const devices = spotify.devices?.filter((d) => d.id !== tabId && d.name !== 'TUBESTER') ?? null;
+  const listed = local || (devices?.some((d) => d.id === device?.id) ?? false);
   return (
     <>
       <div className="device-row">
@@ -209,11 +219,17 @@ function DevicePicker({
             className="input"
             value={device?.id ?? ''}
             onChange={(e) => {
+              if (e.target.value === LOCAL_DEVICE.id) {
+                setDevice({ ...LOCAL_DEVICE });
+                void spotify.source?.activate();
+                return;
+              }
               const d = devices?.find((x) => x.id === e.target.value);
               setDevice(d ? { id: d.id, name: d.name } : null);
             }}
           >
-            <option value="">{devices ? 'Pick a Spotify device' : 'Looking for devices…'}</option>
+            <option value="">{devices || local ? 'Pick a Spotify device' : 'Looking for devices…'}</option>
+            {canPlayHere && <option value={LOCAL_DEVICE.id}>This computer</option>}
             {device && !listed && <option value={device.id}>{device.name} (not seen right now)</option>}
             {devices?.map((d) => (
               <option key={d.id} value={d.id}>
@@ -227,7 +243,14 @@ function DevicePicker({
           Refresh
         </button>
       </div>
-      <p className={devices && devices.length === 0 ? '' : 'muted'}>{DEVICE_HELP}</p>
+      {local ? (
+        <p className="muted">
+          The music plays from this computer's speakers. Keep this tab open.
+          {!spotify.playerReady && ' Connecting the Spotify player…'}
+        </p>
+      ) : (
+        <p className={devices && devices.length === 0 ? '' : 'muted'}>{DEVICE_HELP}</p>
+      )}
       <p className="muted warn-note">
         The song name shows on the device that plays. Keep it out of sight, or pick a playlist you don't know well.
       </p>

@@ -14,6 +14,7 @@ Run before announcing a release. Host: a Premium account allowlisted in the Spot
 
 ## In the room
 - [ ] Host from an iPhone: **In the room** is preselected; log in again once (new device permission); open the Spotify app, then **Refresh** → the phone is listed; pick it, start a game → the song plays from the phone, guests hear nothing on their own phones and see "Listen to the room".
+- [ ] Host from a desktop, **In the room**: **This computer** is preselected → start a game → the song plays from the computer's speakers, no share dialog.
 - [ ] Host from a desktop with a Sonos (or another phone) as the device → plays there; Pause / Resume / reveal stop the speaker.
 - [ ] Leave the Spotify app idle for a while, then start a turn → the device wakes and plays (no "Music stopped").
 - [ ] Close the Spotify app mid-game → after a few skips "Music stopped: Can't reach ⟨device⟩…" → reopen Spotify → **Try again** plays again.

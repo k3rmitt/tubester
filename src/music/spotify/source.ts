@@ -1,4 +1,5 @@
 import type { MusicSource, PlaybackError, PlaylistSummary, Track } from '../types';
+import { HttpError } from '../../util/http';
 import type { SpotifyApi } from './api';
 
 export interface SdkPlayer {
@@ -8,7 +9,7 @@ export interface SdkPlayer {
   addListener(event: string, cb: (payload: unknown) => void): boolean;
 }
 
-export type SpotifyApiLike = Pick<SpotifyApi, 'listPlaylists' | 'loadPlaylist' | 'play' | 'pause' | 'resume'>;
+export type SpotifyApiLike = Pick<SpotifyApi, 'listPlaylists' | 'loadPlaylist' | 'play' | 'pause' | 'resume' | 'transfer'>;
 
 export const PREMIUM_REQUIRED = 'Spotify Premium is required to host';
 
@@ -33,6 +34,11 @@ export class SpotifyMusicSource implements MusicSource {
     private readonly createPlayer: () => Promise<SdkPlayer>,
     private readonly readyTimeoutMs = 10_000,
   ) {}
+
+  /** This tab's Spotify Connect device id, once the player is ready. */
+  get deviceIdNow(): string | null {
+    return this.deviceId;
+  }
 
   async connect(): Promise<void> {
     const player = await this.createPlayer();
@@ -102,10 +108,17 @@ export class SpotifyMusicSource implements MusicSource {
     this.paused = false;
     try {
       await this.readyWithin(this.readyTimeoutMs);
-      if (this.current !== trackId || !this.deviceId) return;
-      await this.api.play(this.deviceId, trackId);
+      const deviceId = this.deviceId;
+      if (this.current !== trackId || !deviceId) return;
+      await this.api.play(deviceId, trackId).catch(async (e) => {
+        // A fresh player can be ready here before Spotify's servers know it ("Device not found"):
+        // hand playback to this tab first, then try once more.
+        if (!(e instanceof HttpError && e.status === 404) || this.current !== trackId) throw e;
+        await this.api.transfer(deviceId);
+        await this.api.play(deviceId, trackId);
+      });
       // Paused while the play request was in flight: Spotify started anyway, so pause again.
-      if (this.paused && this.current === trackId) await this.api.pause(this.deviceId).catch(() => undefined);
+      if (this.paused && this.current === trackId) await this.api.pause(deviceId).catch(() => undefined);
     } catch (e) {
       if (this.current === trackId) this.emit(trackId, e instanceof Error ? e.message : String(e));
     }

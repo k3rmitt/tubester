@@ -1,6 +1,7 @@
 import { HttpError } from '../../util/http';
 import type { MusicSource, PlaybackError, PlaylistSummary, Track } from '../types';
 import type { SpotifyApi } from './api';
+import { NotLoggedInError } from './auth';
 
 export type ConnectApi = Pick<SpotifyApi, 'listPlaylists' | 'loadPlaylist' | 'play' | 'pause' | 'resume' | 'transfer'>;
 
@@ -13,6 +14,12 @@ export const NO_DEVICE = 'Pick a Spotify device to play on';
 
 export function cantReach(name: string): string {
   return `Can't reach ${name}. Open Spotify on it, then try again.`;
+}
+
+/** Login and account problems keep their own message; anything else means the device is out of reach. */
+function failureMessage(e: unknown, device: ConnectDevice): string {
+  const account = e instanceof NotLoggedInError || (e instanceof HttpError && (e.status === 401 || e.status === 403));
+  return account && e instanceof Error ? e.message : cantReach(device.name);
 }
 
 /** Plays on a Spotify Connect device the host picked (phone app, speaker, TV…), for games in one room. */
@@ -53,10 +60,11 @@ export class SpotifyConnectSource implements MusicSource {
         await this.api.transfer(device.id);
         await this.api.play(device.id, trackId);
       });
-      // Paused while the play request was in flight: Spotify started anyway, so pause again.
-      if (this.paused && this.current === trackId) await this.api.pause(device.id).catch(() => undefined);
-    } catch {
-      if (this.current === trackId) this.emit(trackId, cantReach(device.name));
+      // Paused or stopped while the play request was in flight: Spotify started anyway, so pause again.
+      const stopped = this.current === null;
+      if (stopped || (this.paused && this.current === trackId)) await this.api.pause(device.id).catch(() => undefined);
+    } catch (e) {
+      if (this.current === trackId) this.emit(trackId, failureMessage(e, device));
     }
   }
 
@@ -80,8 +88,8 @@ export class SpotifyConnectSource implements MusicSource {
     const device = this.device();
     if (trackId === null || !device) return;
     this.paused = false;
-    await this.api.resume(device.id).catch(() => {
-      if (this.current === trackId) this.emit(trackId, cantReach(device.name));
+    await this.api.resume(device.id).catch((e) => {
+      if (this.current === trackId) this.emit(trackId, failureMessage(e, device));
     });
   }
 

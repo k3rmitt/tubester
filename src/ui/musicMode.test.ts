@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { audioTrackFor, canStream, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
+import { audioTrackFor, canStream, initialDevice, isLocalDevice, LOCAL_DEVICE, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
 
 const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1';
@@ -105,5 +105,25 @@ describe('audioTrackFor', () => {
     expect(audioTrackFor('stream', 'demo', { feed, capture })).toBe(feed);
     expect(audioTrackFor('stream', 'spotify', { feed, capture })).toBe(capture);
     expect(audioTrackFor('stream', 'spotify', { feed, capture: null })).toBeNull();
+  });
+});
+
+describe('This computer as the room device', () => {
+  it('is picked by default on a desktop, never on a phone', () => {
+    expect(initialDevice(null, true)).toEqual(LOCAL_DEVICE);
+    expect(initialDevice(null, false)).toBeNull();
+  });
+
+  it('keeps the host’s earlier pick, but not This computer on a phone', () => {
+    const kitchen = { id: 'd1', name: 'Kitchen' };
+    expect(initialDevice(kitchen, true)).toEqual(kitchen);
+    expect(initialDevice(kitchen, false)).toEqual(kitchen);
+    expect(initialDevice(LOCAL_DEVICE, false)).toBeNull();
+  });
+
+  it('tells This computer apart from Connect devices', () => {
+    expect(isLocalDevice(LOCAL_DEVICE)).toBe(true);
+    expect(isLocalDevice({ id: 'd1', name: 'Kitchen' })).toBe(false);
+    expect(isLocalDevice(null)).toBe(false);
   });
 });

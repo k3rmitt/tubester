@@ -25,6 +25,8 @@ import {
   demoAllowed,
   demoFlag,
   effectiveSource,
+  initialDevice,
+  isLocalDevice,
   shouldAutoPause,
   WHERE_KEY,
   type Where,
@@ -56,8 +58,10 @@ export function HostApp() {
   const env = useMemo(browserEnv, []);
   const streamable = canStream(env);
   const [where, setWhereState] = useState<Where>(() => defaultWhere(env, localStorage.getItem(WHERE_KEY)));
-  const [device, setDeviceState] = useState<ConnectDevice | null>(readDevice);
-  const spotify = useSpotify({ wantPlayer: where === 'stream', device });
+  const [device, setDeviceState] = useState<ConnectDevice | null>(() => initialDevice(readDevice(), streamable));
+  // The in-tab player streams to the phones, or plays out loud when the room device is This computer.
+  const playsHere = where === 'stream' || isLocalDevice(device);
+  const spotify = useSpotify({ wantPlayer: playsHere, device });
   const demoOpts = { flag: demoFlag(), spotifyAvailable: spotify.available };
   const [code] = useState(() => {
     const c = localStorage.getItem(ROOM_KEY) ?? newRoomCode();
@@ -132,10 +136,11 @@ export function HostApp() {
     if (status !== 'ready' || !router || !transport || !feed || !demo) return;
     if (mode === 'demo') router.use(demo);
     else if (where === 'room') {
-      if (spotify.connectSource) router.use(spotify.connectSource);
+      const room = isLocalDevice(device) ? spotify.source : spotify.connectSource;
+      if (room) router.use(room);
     } else if (spotify.source) router.use(spotify.source);
     transport.setAudioTrack(audioTrackFor(where, mode, { feed: feed.track, capture: captureRef.current?.track ?? null }));
-  }, [status, mode, where, spotify.source, spotify.connectSource]);
+  }, [status, mode, where, device, spotify.source, spotify.connectSource]);
 
   // Guests learn whether the music is in the room (ignored once a game runs).
   useEffect(() => {
@@ -197,8 +202,14 @@ export function HostApp() {
     setDeviceState(next);
   }
 
+  /** The in-tab player may only start audio from a tap: call this from click handlers. */
+  function unlockLocalPlayer() {
+    if (mode === 'spotify' && where === 'room' && isLocalDevice(device)) void spotify.source?.activate();
+  }
+
   function retryMusic() {
-    if (where === 'room' && mode === 'spotify') spotify.refreshDevices();
+    unlockLocalPlayer();
+    if (where === 'room' && mode === 'spotify' && !isLocalDevice(device)) spotify.refreshDevices();
     sessionRef.current?.retryMusic();
   }
 
@@ -214,6 +225,12 @@ export function HostApp() {
       await spotify.source?.activate();
       captureRef.current?.stop();
       const capture = await captureTabAudio();
+      // The host switched to "In the room" while the share dialog was open: guests get no sound in that mode.
+      if (latest.current.where !== 'stream') {
+        capture.stop();
+        setBroadcast(captureRef.current ? 'on' : 'off');
+        return;
+      }
       captureRef.current = capture;
       capture.onEnded(() => {
         if (captureRef.current !== capture) return;
@@ -248,7 +265,9 @@ export function HostApp() {
   const musicReady =
     mode === 'demo' ||
     (tracks.length > 0 &&
-      (where === 'room' ? spotify.loggedIn && device !== null : broadcast === 'on' && spotify.playerReady));
+      (where === 'stream'
+        ? broadcast === 'on' && spotify.playerReady
+        : spotify.loggedIn && device !== null && (!isLocalDevice(device) || spotify.playerReady)));
   const needsBroadcast = mode === 'spotify' && where === 'stream' && broadcast !== 'on' && !!snap?.view;
 
   return (
@@ -298,6 +317,7 @@ export function HostApp() {
           snap={snap}
           session={session}
           onClose={closeRoom}
+          onStart={unlockLocalPlayer}
           musicReady={musicReady}
           tracks={tracks}
           music={

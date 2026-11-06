@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HttpError } from '../../util/http';
 import type { PlaybackError } from '../types';
 import { PREMIUM_REQUIRED, type SdkPlayer, type SpotifyApiLike, SpotifyMusicSource } from './source';
 
@@ -45,6 +46,9 @@ function fakeApi(failPlay = false, holdPlay: Promise<void> | null = null) {
       calls.push(`pause ${device}`);
       throw new Error('already paused');
     },
+    transfer: async (device) => {
+      calls.push(`transfer ${device}`);
+    },
   };
   return { api, calls };
 }
@@ -65,6 +69,36 @@ describe('SpotifyMusicSource', () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await playing;
     expect(errors).toEqual([{ trackId: 't1', message: 'Spotify player is not responding' }]);
+  });
+
+  it('hands playback to this tab when Spotify does not know the device yet, then plays', async () => {
+    const p = fakePlayer();
+    const { api, calls } = fakeApi();
+    let first = true;
+    api.play = async (device, track) => {
+      calls.push(`play ${device} ${track}`);
+      if (first) {
+        first = false;
+        throw new HttpError(404, 'Device not found');
+      }
+    };
+    const src = new SpotifyMusicSource(api, async () => p.player);
+    const errors: PlaybackError[] = [];
+    src.onError((e) => errors.push(e));
+    await src.connect();
+    p.emit('ready', { device_id: 'dev1' });
+    await src.play('t1');
+    expect(calls).toEqual(['play dev1 t1', 'transfer dev1', 'play dev1 t1']);
+    expect(errors).toEqual([]);
+  });
+
+  it('exposes its Connect device id once ready (to hide it from the room device list)', async () => {
+    const p = fakePlayer();
+    const src = new SpotifyMusicSource(fakeApi().api, async () => p.player);
+    await src.connect();
+    expect(src.deviceIdNow).toBeNull();
+    p.emit('ready', { device_id: 'dev1' });
+    expect(src.deviceIdNow).toBe('dev1');
   });
 
   it('waits for the device before playing', async () => {

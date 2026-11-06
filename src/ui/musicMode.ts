@@ -93,3 +93,19 @@ export function demoFlag(): boolean {
   }
   return demoFlagCache;
 }
+
+/** The Spotify player inside this tab, offered first in the room on a desktop: no device to find, nothing to share. */
+export const LOCAL_DEVICE = { id: 'this-computer', name: 'This computer' } as const;
+
+export function isLocalDevice(d: { id: string; name?: string } | null): boolean {
+  return d?.id === LOCAL_DEVICE.id;
+}
+
+/** The device preselected in the room: the earlier pick, else This computer where the in-tab player works. */
+export function initialDevice(
+  stored: { id: string; name: string } | null,
+  canPlayHere: boolean,
+): { id: string; name: string } | null {
+  if (stored && (canPlayHere || !isLocalDevice(stored))) return stored;
+  return canPlayHere ? { ...LOCAL_DEVICE } : null;
+}
