@@ -85,6 +85,13 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
     [deps, loggedIn],
   );
 
+  // A failed play may mean the login expired: flip the UI back to "logged out" so the host can log in again.
+  useEffect(() => {
+    connectSource?.onError(() => {
+      if (deps && !deps.auth.isLoggedIn()) fail(new NotLoggedInError(SESSION_EXPIRED));
+    });
+  }, [connectSource, deps, fail]);
+
   const refreshDevices = useCallback(() => {
     if (!deps || !loggedIn) return;
     setError(null);

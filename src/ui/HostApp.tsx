@@ -214,6 +214,12 @@ export function HostApp() {
       await spotify.source?.activate();
       captureRef.current?.stop();
       const capture = await captureTabAudio();
+      // The host switched to "In the room" while the share dialog was open: guests get no sound in that mode.
+      if (latest.current.where !== 'stream') {
+        capture.stop();
+        setBroadcast(captureRef.current ? 'on' : 'off');
+        return;
+      }
       captureRef.current = capture;
       capture.onEnded(() => {
         if (captureRef.current !== capture) return;

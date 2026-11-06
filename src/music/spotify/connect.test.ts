@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { HttpError } from '../../util/http';
+import { NotLoggedInError } from './auth';
 import type { PlaybackError } from '../types';
 import { type ConnectApi, SpotifyConnectSource } from './connect';
 
 const KITCHEN = { id: 'd1', name: 'Kitchen' };
 
-/** `plays` scripts each play call: 'ok', a status code to fail with, or a promise to wait on first. */
-function setup(plays: ('ok' | number | Promise<void>)[] = [], device: { id: string; name: string } | null = KITCHEN) {
+/** `plays` scripts each play call: 'ok', a status code or error to fail with, or a promise to wait on first. */
+function setup(plays: ('ok' | number | Error | Promise<void>)[] = [], device: { id: string; name: string } | null = KITCHEN) {
   const calls: string[] = [];
   const api: ConnectApi = {
     listPlaylists: async () => [],
@@ -15,6 +16,7 @@ function setup(plays: ('ok' | number | Promise<void>)[] = [], device: { id: stri
       calls.push(`play ${id} ${track}`);
       const next = plays.shift() ?? 'ok';
       if (next instanceof Promise) await next;
+      else if (next instanceof Error) throw next;
       else if (next !== 'ok') throw new HttpError(next, `failed ${next}`);
     },
     pause: async (id) => {
@@ -110,5 +112,27 @@ describe('SpotifyConnectSource', () => {
     fail(new HttpError(502, 'late failure'));
     await first;
     expect(errors).toEqual([]);
+  });
+
+  it('reports a login or account problem as it is, not as an unreachable device', async () => {
+    const expired = setup([new NotLoggedInError('Spotify session ended')]);
+    await expired.source.play('t1');
+    expect(expired.errors).toEqual([{ trackId: 't1', message: 'Spotify session ended' }]);
+    const premium = setup([403]);
+    await premium.source.play('t1');
+    expect(premium.errors).toEqual([{ trackId: 't1', message: 'failed 403' }]);
+  });
+
+  it('pauses the device when stop arrives while play is in flight', async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const { source, calls } = setup([held]);
+    const playing = source.play('t1');
+    await source.stop();
+    release();
+    await playing;
+    expect(calls).toEqual(['play d1 t1', 'pause d1', 'pause d1']);
   });
 });
