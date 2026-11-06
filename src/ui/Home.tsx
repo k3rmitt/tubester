@@ -18,7 +18,7 @@ export function Home() {
         <div className="hero">
           <Disc size={112} />
           <Wordmark big />
-          <p className="muted">A music timeline party game. Host on this computer, friends join from their phones.</p>
+          <p className="muted">A music timeline party game. Host it, friends join from their phones.</p>
         </div>
         <label className="field">
           Your name

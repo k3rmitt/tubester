@@ -60,4 +60,20 @@ describe('steps', () => {
       }
     }
   });
+
+  it('covers both ways to hear the music (same room or streamed)', () => {
+    expect(PLAYER_STEPS[0].title).toBe('Listen to the song');
+    expect(PLAYER_STEPS[0].body).toBe('It plays on your phone, or out loud in the room. Nobody sees the title or the year.');
+    expect(HOST_STEPS[0]).toMatchObject({
+      kicker: "1 · Where's the music?",
+      title: 'Host from any device',
+      body: "Host from a computer or a phone. **In the room**, one device plays the music out loud. **On everyone's phone**, the music is streamed to each phone from Chrome or Edge on a computer.",
+    });
+    expect(HOST_STEPS[2]).toMatchObject({
+      kicker: '3 · Sound',
+      title: 'Choose where the music plays',
+      body: "**In the room**: pick the Spotify device that plays out loud (open the Spotify app on it first). **On everyone's phone**: press **Start broadcast**, choose **this tab** and keep **Also share tab audio** on.",
+    });
+    for (const s of HOST_STEPS) expect(s.body).not.toMatch(/this computer|Demo tones/);
+  });
 });

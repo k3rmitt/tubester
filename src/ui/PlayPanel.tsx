@@ -13,6 +13,8 @@ export interface PlayPanelProps {
   stealWindowMs: number;
   error: string | null;
   act: (intent: GuestIntent) => void;
+  /** The music plays out loud in the room, not on this phone. */
+  musicInRoom?: boolean;
 }
 
 /** Counts down from `leftMs` (the host's latest figure); restarts when it changes and holds while not running. */
@@ -75,7 +77,7 @@ function ErrorLine({ error }: { error: string | null }) {
   ) : null;
 }
 
-function MyTurn({ view, audio, error, act }: PlayPanelProps) {
+function MyTurn({ view, audio, error, act, musicInRoom }: PlayPanelProps) {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const team = teamById(view, view.viewerTeamId);
@@ -89,7 +91,7 @@ function MyTurn({ view, audio, error, act }: PlayPanelProps) {
   const guess = title.trim() || artist.trim() ? { title, artist } : undefined;
   return (
     <section className="rows">
-      <NowPlaying label={`Your turn · ${team.name}`} audio={audio} />
+      <NowPlaying label={`Your turn · ${team.name}`} audio={audio} inRoom={musicInRoom} />
       <h2>Place it on your timeline</h2>
       <span className="muted">Tap a yellow spot to place the song</span>
       <Timeline cards={team.timeline} slots={slots} />
@@ -195,7 +197,7 @@ function Steal({ view, stealWindowMs, error, act }: PlayPanelProps) {
   );
 }
 
-function Watching({ view, audio, act }: PlayPanelProps) {
+function Watching({ view, audio, act, musicInRoom }: PlayPanelProps) {
   const turn = view.turn;
   const active = teamById(view, turn?.teamId);
   if (!turn || !active) return null;
@@ -206,7 +208,7 @@ function Watching({ view, audio, act }: PlayPanelProps) {
   const label = view.phase === 'stealWindow' ? `${active.name} locked in` : `${active.name} is placing…`;
   return (
     <section className="rows">
-      <NowPlaying label={label} audio={audio} />
+      <NowPlaying label={label} audio={audio} inRoom={musicInRoom} />
       <h2 className="team-name">
         <TeamIcon teamId={active.id} size={22} /> {active.name}'s timeline
       </h2>

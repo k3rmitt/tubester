@@ -102,6 +102,7 @@ export function HostBoard({
             stealWindowMs={snap.lobby.settings.stealWindowSec * 1000}
             error={error}
             act={act}
+            musicInRoom={snap.lobby.musicInRoom}
           />
           <section className="panel rows">
             <h2>Players</h2>

@@ -125,7 +125,7 @@ function Art({ art }: { art: StepArt }) {
             <rect x="3" y="1.5" width="18" height="11.5" rx="1.5" />
             <path d="M1 16.5h22M9.5 7.2l4 2.3-4 2.3z" />
           </svg>
-          <span className="tut-mini">Music plays here</span>
+          <span className="tut-mini">Computer or phone</span>
         </>
       );
     case 'music':
@@ -141,8 +141,11 @@ function Art({ art }: { art: StepArt }) {
     case 'broadcast':
       return (
         <>
-          <span className="tut-chip">Share this tab</span>
-          <span className="tut-mini">Also share tab audio: on</span>
+          <span className="tut-row center wrap">
+            <span className="tut-chip me">In the room</span>
+            <span className="tut-chip">On everyone's phone</span>
+          </span>
+          <span className="tut-mini">Pick where the music plays</span>
         </>
       );
     case 'invite':
