@@ -28,7 +28,7 @@
   - Phone notice: "Keep TUBESTER open in front: switching apps pauses the game for everyone."
   - Guest play panel: "Listen to the room"
   - Home subtitle: "A music timeline party game. Host it, friends join from their phones."
-  - Host tutorial step 1 body: "Host from a computer or a phone. **In the room**, one device plays the music out loud. **On everyone's phone**, the music is streamed to each phone from Chrome or Edge on a computer."
+  - Tutorial copy: the spec's "The tutorials" section, verbatim (players' step 1, host steps 1–3).
 
 ## Review Focus
 
@@ -146,8 +146,8 @@ Behaviour: `ready()` resolves at once. `play(trackId)`: no device → emit `"Pic
 - Modify: `src/ui/components.tsx` (`NowPlaying` gets `inRoom?: boolean`), `src/ui/PlayPanel.tsx` (passes `musicInRoom`), `src/ui/GuestApp.tsx`, `src/ui/HostBoard.tsx`, `src/ui/Home.tsx`, `src/ui/tutorialContent.ts`, `src/ui/Tutorial.tsx` (art for step 1)
 - Test: `src/ui/tutorialContent.test.ts`
 
-- [ ] **Step 1: Failing test:** `HOST_STEPS[0].body` equals the spec copy; no host step body contains `"this computer"`; step 3 body mentions **On everyone's phone**; step 2 body no longer mentions Demo tones.
-- [ ] **Step 2:** Run → FAIL. **Step 3:** update copy: step 1 title "Host from any device", kicker "1 · Where's the music?"; step 3 body starts "Only for **On everyone's phone**: press **Start broadcast**…"; step 2 drops the demo sentence; Home subtitle per spec.
+- [ ] **Step 1: Failing tests** (copy from the spec's "The tutorials" section, verbatim): `PLAYER_STEPS[0]` title "Listen to the song" and its body; `HOST_STEPS[0]` kicker/title/body; `HOST_STEPS[2]` kicker "3 · Sound", title "Choose where the music plays" and its body; no host body contains "this computer" or "Demo tones".
+- [ ] **Step 2:** `npx vitest run src/ui/tutorialContent.test.ts` → FAIL. **Step 3:** update `tutorialContent.ts`, the step-3 art in `Tutorial.tsx` (two chips: "In the room" marked `me`, "On everyone's phone"; replaces the "Share this tab" art), and the Home subtitle → PASS.
 - [ ] **Step 4:** `NowPlaying` shows "Listen to the room" as the kicker's second line when `inRoom` (states unchanged); guests pass `snap.lobby?.musicInRoom`, host passes `snap.lobby.musicInRoom`. Guests never show "Tap to enable sound" when `musicInRoom`.
 - [ ] **Step 5:** `npm test` green. Commit `feat(ui): guests see Listen to the room; copy for hosting from any device`.
 

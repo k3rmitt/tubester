@@ -89,8 +89,13 @@ The tones play through the host device's speaker (the tone feed is connected to 
 
 ## The tutorials
 
-- Host tutorial step 1 ("Host on this computer") becomes about the choice: "Host from a computer or a phone. **In the room**, one device plays the music out loud. **On everyone's phone**, the music is streamed to each phone from Chrome or Edge on a computer."
-- Host step 3 ("Share this tab's sound") says it only applies to on-everyone's-phone mode.
+The tutorials show before anyone joins, so the copy covers both modes.
+
+- Players' step 1: title "Listen to the song", body "It plays on your phone, or out loud in the room. Nobody sees the title or the year."
+- Host step 1: kicker "1 · Where's the music?", title "Host from any device", body "Host from a computer or a phone. **In the room**, one device plays the music out loud. **On everyone's phone**, the music is streamed to each phone from Chrome or Edge on a computer."
+- Host step 2 ("Pick your playlist"): unchanged except the demo tones sentence is removed.
+- Host step 3: kicker "3 · Sound", title "Choose where the music plays", body "**In the room**: pick the Spotify device that plays out loud (open the Spotify app on it first). **On everyone's phone**: press **Start broadcast**, choose **this tab** and keep **Also share tab audio** on." Its picture shows the two choices ("In the room" / "On everyone's phone") instead of "Share this tab".
+- Host steps 4–6 unchanged.
 - Home's subtitle stops saying "Host on this computer": "A music timeline party game. Host it, friends join from their phones."
 
 ## What stays the same
