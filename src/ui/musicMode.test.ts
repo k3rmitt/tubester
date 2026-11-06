@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canStream, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
+import { audioTrackFor, canStream, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
 
 const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1';
@@ -90,5 +90,20 @@ describe('shouldAutoPause', () => {
     expect(shouldAutoPause({ ...base, phase: null })).toBe(false);
     expect(shouldAutoPause({ ...base, phase: 'finished' })).toBe(false);
     expect(shouldAutoPause({ ...base, paused: true })).toBe(false);
+  });
+});
+
+describe('audioTrackFor', () => {
+  const feed = { id: 'feed' } as MediaStreamTrack;
+  const capture = { id: 'capture' } as MediaStreamTrack;
+  it('sends guests nothing when the music is in the room', () => {
+    expect(audioTrackFor('room', 'spotify', { feed, capture })).toBeNull();
+    expect(audioTrackFor('room', 'demo', { feed, capture })).toBeNull();
+  });
+
+  it('streams the tones or the captured tab otherwise', () => {
+    expect(audioTrackFor('stream', 'demo', { feed, capture })).toBe(feed);
+    expect(audioTrackFor('stream', 'spotify', { feed, capture })).toBe(capture);
+    expect(audioTrackFor('stream', 'spotify', { feed, capture: null })).toBeNull();
   });
 });

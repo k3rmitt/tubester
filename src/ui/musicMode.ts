@@ -67,3 +67,29 @@ export function effectiveSource(stored: string | null, opts: { flag: boolean; sp
 export function shouldAutoPause(s: { hidden: boolean; inRoom: boolean; phase: string | null; paused: boolean }): boolean {
   return s.hidden && s.inRoom && s.phase !== null && s.phase !== 'finished' && !s.paused;
 }
+
+/** The sound sent to guests: nothing when the music plays in the room. */
+export function audioTrackFor(
+  where: Where,
+  source: Source,
+  tracks: { feed: MediaStreamTrack | null; capture: MediaStreamTrack | null },
+): MediaStreamTrack | null {
+  if (where === 'room') return null;
+  return source === 'demo' ? tracks.feed : tracks.capture;
+}
+
+let demoFlagCache: boolean | null = null;
+
+/** Read once at startup (main.tsx), before the Spotify login code rewrites the URL. */
+export function demoFlag(): boolean {
+  if (demoFlagCache === null) {
+    let session: Storage | null = null;
+    try {
+      session = window.sessionStorage;
+    } catch {
+      // storage blocked
+    }
+    demoFlagCache = readDemoFlag(window.location.search, session);
+  }
+  return demoFlagCache;
+}

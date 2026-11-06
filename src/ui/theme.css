@@ -282,3 +282,16 @@ select.input { appearance: none; -webkit-appearance: none; padding-right: 36px; 
   .tutorial.host .tut-art { width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .tut-step { animation: none; } }
+
+/* Music panel: where the music is heard */
+.choices.stacked { flex-direction: column; flex-wrap: nowrap; }
+.choices.stacked .choice { align-items: flex-start; padding: 10px 14px; }
+.choices.stacked .choice input { margin-top: 3px; }
+.choice-note { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.choice-note.warn { color: var(--steal); }
+.warn-note { color: var(--steal); }
+.device-row { display: flex; gap: 8px; align-items: flex-end; }
+.device-row .field { flex: 1; min-width: 0; }
+.device-row .btn { flex: none; }
+.panel.notice { gap: 12px; }
+.panel.notice p { margin: 0; flex: 1; min-width: 0; }
