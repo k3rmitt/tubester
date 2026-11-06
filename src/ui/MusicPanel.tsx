@@ -1,23 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { reviewSummary } from '../host/review';
 import { DEMO_TRACKS } from '../music/demo';
+import { NEEDS_RELOGIN } from '../music/spotify/api';
+import type { ConnectDevice } from '../music/spotify/connect';
+import type { Where } from './musicMode';
 import type { SpotifyState } from './useSpotify';
 
 export type MusicMode = 'demo' | 'spotify';
 export type BroadcastState = 'off' | 'starting' | 'on' | 'lost';
 
 export function MusicPanel({
+  where,
+  setWhere,
+  streamable,
+  showDemo,
   mode,
   setMode,
   spotify,
+  device,
+  setDevice,
   broadcast,
   broadcastError,
   onStartBroadcast,
   onReview,
 }: {
+  where: Where;
+  setWhere: (w: Where) => void;
+  /** False on phones, tablets and browsers that can't share a tab with its sound. */
+  streamable: boolean;
+  showDemo: boolean;
   mode: MusicMode;
   setMode: (m: MusicMode) => void;
   spotify: SpotifyState;
+  device: ConnectDevice | null;
+  setDevice: (d: ConnectDevice | null) => void;
   broadcast: BroadcastState;
   broadcastError: string | null;
   onStartBroadcast: () => void;
@@ -26,29 +42,63 @@ export function MusicPanel({
   return (
     <section className="panel">
       <h2>Music</h2>
-      <fieldset className="choices">
-        <legend className="muted">Music source</legend>
+      <fieldset className="choices stacked">
+        <legend className="muted">Where will people hear the music?</legend>
         <label className="choice">
-          <input type="radio" name="music" checked={mode === 'demo'} onChange={() => setMode('demo')} />
-          Demo tones
+          <input type="radio" name="where" checked={where === 'room'} onChange={() => setWhere('room')} />
+          <span>
+            In the room
+            <span className="choice-note">One device plays the music out loud. Everyone must be in the same room.</span>
+          </span>
         </label>
-        {spotify.available && (
-          <label className="choice">
-            <input type="radio" name="music" checked={mode === 'spotify'} onChange={() => setMode('spotify')} />
-            Spotify
-          </label>
-        )}
+        <label className="choice">
+          <input type="radio" name="where" checked={where === 'stream'} onChange={() => setWhere('stream')} />
+          <span>
+            On everyone's phone
+            <span className={streamable ? 'choice-note' : 'choice-note warn'}>
+              The music plays here and is streamed to each phone. Needs Chrome or Edge on a computer.
+            </span>
+          </span>
+        </label>
       </fieldset>
+      {showDemo && (
+        <fieldset className="choices">
+          <legend className="muted">Music source</legend>
+          <label className="choice">
+            <input type="radio" name="music" checked={mode === 'demo'} onChange={() => setMode('demo')} />
+            Demo tones
+          </label>
+          {spotify.available && (
+            <label className="choice">
+              <input type="radio" name="music" checked={mode === 'spotify'} onChange={() => setMode('spotify')} />
+              Spotify
+            </label>
+          )}
+        </fieldset>
+      )}
       {mode === 'demo' && <p className="muted">Demo hits · {DEMO_TRACKS.length} songs, played as test tones.</p>}
       {mode === 'spotify' && (
-        <SpotifySteps spotify={spotify} broadcast={broadcast} onStartBroadcast={onStartBroadcast} onReview={onReview} />
+        <SpotifySteps
+          where={where}
+          spotify={spotify}
+          device={device}
+          setDevice={setDevice}
+          broadcast={broadcast}
+          onStartBroadcast={onStartBroadcast}
+          onReview={onReview}
+        />
       )}
       {spotify.error && (
         <p className="error" role="alert">
           {spotify.error}
         </p>
       )}
-      {broadcastError && (
+      {spotify.error === NEEDS_RELOGIN && (
+        <button type="button" className="btn small" onClick={spotify.login}>
+          Log in with Spotify
+        </button>
+      )}
+      {broadcastError && where === 'stream' && (
         <p className="error" role="alert">
           {broadcastError}
         </p>
@@ -58,12 +108,18 @@ export function MusicPanel({
 }
 
 function SpotifySteps({
+  where,
   spotify,
+  device,
+  setDevice,
   broadcast,
   onStartBroadcast,
   onReview,
 }: {
+  where: Where;
   spotify: SpotifyState;
+  device: ConnectDevice | null;
+  setDevice: (d: ConnectDevice | null) => void;
   broadcast: BroadcastState;
   onStartBroadcast: () => void;
   onReview: () => void;
@@ -72,7 +128,7 @@ function SpotifySteps({
   if (!spotify.loggedIn) {
     return (
       <>
-        <p className="muted">Spotify Premium is needed on this computer only. Guests just need the link.</p>
+        <p className="muted">Spotify Premium is needed for the host only. Guests just need the link.</p>
         <button type="button" className="btn primary" onClick={spotify.login}>
           Log in with Spotify
         </button>
@@ -116,27 +172,93 @@ function SpotifySteps({
           </button>
         </div>
       )}
-      {broadcast === 'on' ? (
-        <span className="chip live">Broadcasting this tab</span>
+      {where === 'room' ? (
+        <DevicePicker spotify={spotify} device={device} setDevice={setDevice} />
       ) : (
-        <>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!spotify.playerReady || broadcast === 'starting'}
-            onClick={onStartBroadcast}
-          >
-            {broadcast === 'lost' ? 'Resume broadcast' : 'Start broadcast'}
-          </button>
-          <p className="muted">
-            Chrome will ask what to share: pick <b>this tab</b> and keep “Also share tab audio” on.
-          </p>
-          {!spotify.playerReady && <p className="muted">Connecting the Spotify player…</p>}
-        </>
+        <Broadcast spotify={spotify} broadcast={broadcast} onStartBroadcast={onStartBroadcast} />
       )}
       <button type="button" className="btn small" onClick={spotify.logout}>
         Log out of Spotify
       </button>
     </div>
+  );
+}
+
+const DEVICE_HELP = "Don't see your device? Open the Spotify app on it, play anything for a second, then tap Refresh.";
+
+function DevicePicker({
+  spotify,
+  device,
+  setDevice,
+}: {
+  spotify: SpotifyState;
+  device: ConnectDevice | null;
+  setDevice: (d: ConnectDevice | null) => void;
+}) {
+  const { devices, refreshDevices } = spotify;
+  useEffect(() => {
+    refreshDevices();
+  }, [refreshDevices]);
+  const listed = devices?.some((d) => d.id === device?.id) ?? false;
+  return (
+    <>
+      <div className="device-row">
+        <label className="field">
+          Play on
+          <select
+            className="input"
+            value={device?.id ?? ''}
+            onChange={(e) => {
+              const d = devices?.find((x) => x.id === e.target.value);
+              setDevice(d ? { id: d.id, name: d.name } : null);
+            }}
+          >
+            <option value="">{devices ? 'Pick a Spotify device' : 'Looking for devices…'}</option>
+            {device && !listed && <option value={device.id}>{device.name} (not seen right now)</option>}
+            {devices?.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+                {d.type ? ` · ${d.type}` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="btn small" onClick={refreshDevices}>
+          Refresh
+        </button>
+      </div>
+      <p className={devices && devices.length === 0 ? '' : 'muted'}>{DEVICE_HELP}</p>
+      <p className="muted warn-note">
+        The song name shows on the device that plays. Keep it out of sight, or pick a playlist you don't know well.
+      </p>
+    </>
+  );
+}
+
+function Broadcast({
+  spotify,
+  broadcast,
+  onStartBroadcast,
+}: {
+  spotify: SpotifyState;
+  broadcast: BroadcastState;
+  onStartBroadcast: () => void;
+}) {
+  if (broadcast === 'on') return <span className="chip live">Broadcasting this tab</span>;
+  return (
+    <>
+      <button
+        type="button"
+        className="btn primary"
+        disabled={!spotify.playerReady || broadcast === 'starting'}
+        onClick={onStartBroadcast}
+      >
+        {broadcast === 'lost' ? 'Resume broadcast' : 'Start broadcast'}
+      </button>
+      <p className="muted">
+        Chrome will ask what to share: pick <b>this tab</b> and keep “Also share tab audio” on.
+      </p>
+      {!spotify.playerReady && <p className="muted">Connecting the Spotify player…</p>}
+    </>
   );
 }

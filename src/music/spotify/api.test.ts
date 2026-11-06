@@ -142,8 +142,8 @@ describe('SpotifyApi requests', () => {
   });
 
   it("surfaces Spotify's error message", async () => {
-    const { api } = setup([{ status: 403, body: { error: { status: 403, message: 'User not registered in the Developer Dashboard' } } }]);
-    await expect(api.me()).rejects.toThrow('User not registered in the Developer Dashboard');
+    const { api } = setup([{ status: 403, body: { error: { status: 403, message: 'Player command failed: Restriction violated' } } }]);
+    await expect(api.pause('d1')).rejects.toThrow('Player command failed: Restriction violated');
   });
 
   it('starts a track on a device and pauses it', async () => {
@@ -155,5 +155,42 @@ describe('SpotifyApi requests', () => {
       init: { method: 'PUT', body: JSON.stringify({ uris: ['spotify:track:t1'] }) },
     });
     expect(calls[1]).toMatchObject({ url: 'https://api.spotify.com/v1/me/player/pause?device_id=dev%201', init: { method: 'PUT' } });
+  });
+});
+
+describe('SpotifyApi Connect devices', () => {
+  it('lists usable devices only', async () => {
+    const { api, calls } = setup([
+      {
+        status: 200,
+        body: {
+          devices: [
+            { id: 'd1', name: 'Kitchen', type: 'Speaker', is_active: false },
+            { id: null, name: 'Ghost', type: 'Speaker' },
+            { id: 'r', name: 'Restricted', type: 'TV', is_restricted: true },
+          ],
+        },
+      },
+    ]);
+    expect(await api.devices()).toEqual([{ id: 'd1', name: 'Kitchen', type: 'Speaker', isActive: false }]);
+    expect(calls[0].url).toBe('https://api.spotify.com/v1/me/player/devices');
+  });
+
+  it('asks for a new login when the device permission is missing', async () => {
+    const { api } = setup([{ status: 403, body: { error: { message: 'Insufficient client scope' } } }]);
+    await expect(api.devices()).rejects.toThrow('Log in to Spotify again to see your devices');
+  });
+
+  it('transfers playback to a device without starting it', async () => {
+    const { api, calls } = setup([{ status: 204 }]);
+    await api.transfer('d1');
+    expect(calls[0].url).toBe('https://api.spotify.com/v1/me/player');
+    expect(calls[0].init?.method).toBe('PUT');
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ device_ids: ['d1'], play: false });
+  });
+
+  it('explains when the account is not allowed to use the app', async () => {
+    const { api } = setup([{ status: 403, body: { error: { message: 'User not registered in the Developer Dashboard' } } }]);
+    await expect(api.listPlaylists()).rejects.toThrow("This Spotify account can't host yet. Ask the TUBESTER owner to add it.");
   });
 });

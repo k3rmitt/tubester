@@ -7,6 +7,7 @@ import {
   type Lobby,
   playerTeams,
   setConnected,
+  setMusicInRoom,
   teamNameOf,
   teamSetups,
   updateSettings,
@@ -25,6 +26,7 @@ describe('lobby', () => {
       players: [{ id: 'host', name: 'Hervé', teamId: 'team-0', connected: true, isHost: true }],
       settings: { cardsToWin: 10, startingTokens: 2, stealWindowSec: 30 },
       started: false,
+      musicInRoom: false,
     });
     expect(teamNameOf('team-0')).toBe('Vinyl');
   });
@@ -91,5 +93,13 @@ describe('lobby', () => {
     expect(canStart(l)).toBe(true);
     expect(canStart(assignTeam(l, 'p1', 'team-0'))).toBe(false);
     expect(playerTeams(l)).toEqual({ host: 'team-0', p1: 'team-1', p2: 'team-0' });
+  });
+
+  it('switches the music to the room until the game starts', () => {
+    const l = setMusicInRoom(createLobby(HOST), true);
+    expect(l.musicInRoom).toBe(true);
+    expect(setMusicInRoom(l, false).musicInRoom).toBe(false);
+    const started = { ...l, started: true };
+    expect(setMusicInRoom(started, false)).toBe(started);
   });
 });

@@ -15,6 +15,7 @@ import {
   type LobbySettings,
   playerTeams,
   setConnected,
+  setMusicInRoom,
   teamSetups,
   updateSettings,
 } from './lobby';
@@ -100,6 +101,11 @@ export class HostSession {
 
   updateSettings(patch: Partial<LobbySettings>): void {
     this.lobby = updateSettings(this.lobby, patch);
+    this.broadcast();
+  }
+
+  setMusicInRoom(on: boolean): void {
+    this.lobby = setMusicInRoom(this.lobby, on);
     this.broadcast();
   }
 
@@ -193,6 +199,7 @@ export class HostSession {
       this.secrets = saved.secrets;
       this.lobby = {
         ...saved.lobby,
+        musicInRoom: saved.lobby.musicInRoom === true,
         players: saved.lobby.players.map((p) => ({ ...p, connected: p.id === this.deps.host.id })),
       };
       this.runtime = HostRuntime.restore(saved.runtime, this.runtimeDeps());

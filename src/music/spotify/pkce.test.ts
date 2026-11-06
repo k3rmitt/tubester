@@ -8,6 +8,10 @@ describe('pkce', () => {
     );
   });
 
+  it('asks to read the playback state (to list Connect devices)', () => {
+    expect(SPOTIFY_SCOPES).toContain('user-read-playback-state');
+  });
+
   it('makes random strings from the PKCE alphabet', () => {
     expect(randomString(64)).toMatch(/^[A-Za-z0-9._~-]{64}$/);
     expect(randomString(4, (a) => a.map((_, i) => i))).toBe('ABCD');

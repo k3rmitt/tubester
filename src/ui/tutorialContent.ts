@@ -65,8 +65,8 @@ export const PLAYER_STEPS: TutorialStep[] = [
   {
     art: 'listen',
     kicker: '1 · Listen',
-    title: 'A song plays on your phone',
-    body: 'Nobody sees the title or the year. Turn your sound on and listen.',
+    title: 'Listen to the song',
+    body: 'It plays on your phone, or out loud in the room. Nobody sees the title or the year.',
   },
   {
     art: 'place',
@@ -103,21 +103,21 @@ export const PLAYER_STEPS: TutorialStep[] = [
 export const HOST_STEPS: TutorialStep[] = [
   {
     art: 'computer',
-    kicker: '1 · Your computer is the stage',
-    title: 'Host on this computer',
-    body: "Use **Chrome or Edge** on a computer. The music plays here and is streamed to everyone's phone. You play too, with your own team.",
+    kicker: "1 · Where's the music?",
+    title: 'Host from any device',
+    body: "Host from a computer or a phone. **In the room**, one device plays the music out loud. **On everyone's phone**, the music is streamed to each phone from Chrome or Edge on a computer.",
   },
   {
     art: 'music',
     kicker: '2 · Music',
     title: 'Pick your playlist',
-    body: "Log in with **Spotify Premium** and choose one of your playlists. TUBESTER finds each song's original year; check the ones flagged before starting. No Spotify? **Demo tones** let you try the game.",
+    body: "Log in with **Spotify Premium** and choose one of your playlists. TUBESTER finds each song's original year; check the ones flagged before starting.",
   },
   {
     art: 'broadcast',
-    kicker: '3 · Broadcast',
-    title: "Share this tab's sound",
-    body: 'Press **Start broadcast**, choose **this tab** and keep **Also share tab audio** on. That is how the music reaches the phones.',
+    kicker: '3 · Sound',
+    title: 'Choose where the music plays',
+    body: "**In the room**: pick the Spotify device that plays out loud (open the Spotify app on it first). **On everyone's phone**: press **Start broadcast**, choose **this tab** and keep **Also share tab audio** on.",
   },
   {
     art: 'invite',

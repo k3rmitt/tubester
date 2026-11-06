@@ -41,6 +41,26 @@ export function pickCover(images: { url?: string; width?: number | null }[] | un
   return (big[0] ?? usable.sort((a, b) => width(b) - width(a))[0]).url;
 }
 
+export const NEEDS_RELOGIN = 'Log in to Spotify again to see your devices';
+export const NOT_ALLOWED = "This Spotify account can't host yet. Ask the TUBESTER owner to add it.";
+
+export interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: string;
+  isActive: boolean;
+}
+
+interface ApiDevice {
+  id?: string | null;
+  name?: string;
+  type?: string;
+  is_active?: boolean;
+  is_restricted?: boolean;
+}
+
+const is403 = (e: unknown) => e instanceof HttpError && e.status === 403;
+
 export class SpotifyApi {
   constructor(
     private readonly auth: TokenSource,
@@ -48,7 +68,10 @@ export class SpotifyApi {
   ) {}
 
   async me(): Promise<{ id: string }> {
-    const body = (await this.request('GET', '/me')) as { id?: string } | null;
+    const body = (await this.request('GET', '/me').catch((e) => {
+      // Development mode: accounts not on the app's allowlist get 403.
+      throw is403(e) ? new Error(NOT_ALLOWED) : e;
+    })) as { id?: string } | null;
     if (!body?.id) throw new Error('Spotify returned no user id');
     return { id: body.id };
   }
@@ -85,6 +108,25 @@ export class SpotifyApi {
       });
     }
     return out;
+  }
+
+  /** Spotify Connect devices of this account that TUBESTER can control. */
+  async devices(): Promise<SpotifyDevice[]> {
+    const body = (await this.request('GET', '/me/player/devices').catch((e) => {
+      // Logins from before the device permission was added get 403.
+      throw is403(e) ? new Error(NEEDS_RELOGIN) : e;
+    })) as { devices?: ApiDevice[] } | null;
+    const out: SpotifyDevice[] = [];
+    for (const d of body?.devices ?? []) {
+      if (!d.id || d.is_restricted) continue;
+      out.push({ id: d.id, name: d.name ?? 'Spotify device', type: d.type ?? '', isActive: d.is_active === true });
+    }
+    return out;
+  }
+
+  /** Makes the device the active one (wakes an idle device) without starting playback. */
+  async transfer(deviceId: string): Promise<void> {
+    await this.request('PUT', '/me/player', { device_ids: [deviceId], play: false });
   }
 
   async play(deviceId: string, trackId: string): Promise<void> {

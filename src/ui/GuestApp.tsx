@@ -60,7 +60,7 @@ export function GuestApp({ code }: { code: string }) {
       <audio ref={audioRef} autoPlay playsInline>
         <track kind="captions" />
       </audio>
-      {needsTap && (
+      {needsTap && !snap?.lobby?.musicInRoom && (
         <button type="button" className="banner" onClick={enableSound}>
           Tap to enable sound
         </button>
@@ -177,7 +177,14 @@ function GuestGame({ snap, act }: { snap: GuestSnapshot; act: (i: GuestIntent) =
         </>
       )}
       <Scores view={view} />
-      <PlayPanel view={view} audio={snap.audio} stealWindowMs={snap.stealWindowMs} error={snap.error} act={act} />
+      <PlayPanel
+        view={view}
+        audio={snap.audio}
+        stealWindowMs={snap.stealWindowMs}
+        error={snap.error}
+        act={act}
+        musicInRoom={snap.lobby?.musicInRoom}
+      />
       <PauseCover view={view} players={snap.lobby?.players ?? []} act={act} />
     </>
   );

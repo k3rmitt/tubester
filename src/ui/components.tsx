@@ -117,13 +117,14 @@ export function MysterySleeve({ size = 64 }: { size?: number }) {
   );
 }
 
-export function NowPlaying({ label, audio }: { label: string; audio: AudioState }) {
+export function NowPlaying({ label, audio, inRoom = false }: { label: string; audio: AudioState; inRoom?: boolean }) {
   return (
     <div className="panel now">
       <MysterySleeve />
       <div className="rows">
         <span className="kicker">{label}</span>
         <strong className="headline">Mystery track</strong>
+        {inRoom && <span className="muted">Listen to the room</span>}
         {audio === 'playing' ? (
           <span className="eq" role="img" aria-label="Playing">
             <i />

@@ -3,15 +3,18 @@ import { type Browser, devices, expect, type Page, test } from '@playwright/test
 const PHONE = { viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 const WIN = /\bwins?!$/;
 
-async function openHost(browser: Browser) {
+async function openHost(browser: Browser, where: 'stream' | 'room' = 'stream') {
   const ctx = await browser.newContext({ ...devices['Desktop Chrome'] });
   const page = await ctx.newPage();
-  await page.goto('./#/');
+  // ?demo shows demo tones even when .env.local has a Spotify client id.
+  await page.goto('./?demo#/');
   await page.getByRole('button', { name: 'Skip tutorial' }).click({ timeout: 15_000 });
   await page.getByLabel('Your name').fill('Hervé');
   await page.getByRole('button', { name: 'Create room' }).click();
   const link = (await page.getByTestId('invite-link').textContent({ timeout: 30_000 })) ?? '';
   expect(link).toMatch(/#\/join\/TUBE-[A-Z0-9]{4}$/);
+  await page.getByRole('radio', { name: where === 'room' ? /In the room/ : /On everyone's phone/ }).check();
+  await page.getByRole('radio', { name: 'Demo tones' }).check();
   return { page, link };
 }
 
@@ -47,7 +50,6 @@ test('three players play a short game to the end', async ({ browser }) => {
   const lea = await joinGuest(browser, host.link, 'Léa', true);
   const marco = await joinGuest(browser, host.link, 'Marco', false);
   await expect(host.page.getByLabel('Team for Marco')).toBeVisible();
-  await expect(host.page.getByRole('radio', { name: 'Demo tones' })).toBeChecked();
   await setNumber(host.page, 'Cards to win', '2');
   // Long window: the game only moves on because the other teams pass (the window closes early).
   await setNumber(host.page, 'Steal window (s)', '60');
@@ -122,13 +124,45 @@ test('a guest gets the game back after the host reloads', async ({ browser }) =>
   for (const p of [host.page, lea]) await expect(p.getByRole('dialog').getByText(WIN)).toBeVisible({ timeout: 15_000 });
 });
 
+test('in the room: guests get no sound and see Listen to the room', async ({ browser }) => {
+  const host = await openHost(browser, 'room');
+  const lea = await joinGuest(browser, host.link, 'Léa', true);
+  await host.page.getByRole('button', { name: 'Start game' }).click();
+  await expect(lea.getByText('Listen to the room').first()).toBeVisible({ timeout: 15_000 });
+  await expect(host.page.getByText('1 player connected')).toBeVisible();
+  await expect(lea.getByRole('button', { name: 'Tap to enable sound' })).toBeHidden();
+  expect(await hasAudio(lea)).toBe(false);
+  expect(await sideScroll(lea)).toBeLessThanOrEqual(0);
+
+  // One full turn: place, steal or pass, reveal, next.
+  const pages = [host.page, lea];
+  let player: Page | undefined;
+  await expect
+    .poll(async () => {
+      for (const p of pages) if (await p.getByRole('button', { name: 'Lock in' }).isVisible()) player = p;
+      return player !== undefined;
+    }, { timeout: 30_000 })
+    .toBe(true);
+  if (!player) throw new Error('no active player');
+  await player.getByRole('button', { name: /^(Before|Between|After)/ }).first().click();
+  await player.getByRole('button', { name: 'Lock in' }).click();
+  const other = player === lea ? host.page : lea;
+  const press = other.getByRole('button', { name: 'TUBESTER!' });
+  await expect(press).toBeEnabled({ timeout: 15_000 });
+  await press.click();
+  await expect(lea.getByText('It was', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await host.page.getByRole('button', { name: 'Next' }).click();
+  await expect(lea.getByText('Listen to the room').first()).toBeVisible({ timeout: 15_000 });
+  expect(await hasAudio(lea)).toBe(false);
+});
+
 test('the participant tutorial shows once, can be skipped and reopened', async ({ browser }) => {
   const host = await openHost(browser);
   const ctx = await browser.newContext(PHONE);
   const page = await ctx.newPage();
   await page.goto(host.link);
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('A song plays on your phone')).toBeVisible({ timeout: 15_000 });
+  await expect(dialog.getByText('Listen to the song')).toBeVisible({ timeout: 15_000 });
   await expect(dialog.getByRole('button', { name: 'Next' })).toBeFocused();
   await dialog.getByRole('button', { name: 'Next' }).click();
   await expect(dialog.getByText('Your turn: when was it released?')).toBeVisible();
@@ -142,7 +176,7 @@ test('the participant tutorial shows once, can be skipped and reopened', async (
   await expect(page.getByRole('dialog')).toBeHidden();
 
   await page.getByRole('button', { name: 'How to play' }).click();
-  await expect(page.getByRole('dialog').getByText('A song plays on your phone')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Listen to the song')).toBeVisible();
 });
 
 test("the host tutorial hands over to the players' tutorial from its first step", async ({ browser }) => {
@@ -150,10 +184,10 @@ test("the host tutorial hands over to the players' tutorial from its first step"
   const page = await ctx.newPage();
   await page.goto('./#/');
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('Host on this computer')).toBeVisible({ timeout: 15_000 });
+  await expect(dialog.getByText('Host from any device')).toBeVisible({ timeout: 15_000 });
   for (let i = 0; i < 5; i++) await dialog.getByRole('button', { name: 'Next' }).click();
   await dialog.getByRole('button', { name: "See the players' tutorial" }).click();
-  await expect(dialog.getByText('A song plays on your phone')).toBeVisible();
+  await expect(dialog.getByText('Listen to the song')).toBeVisible();
   await dialog.getByRole('button', { name: 'Skip tutorial' }).click();
 
   await page.reload();

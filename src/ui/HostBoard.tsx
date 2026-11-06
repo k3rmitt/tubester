@@ -11,12 +11,18 @@ export function HostBoard({
   code,
   snap,
   session,
+  onRetryMusic,
+  phoneNotice,
 }: {
   code: string;
   snap: HostSnapshot;
   session: HostSession;
+  onRetryMusic: () => void;
+  /** Hosting a room game from a phone: warn once that leaving the app pauses the game. */
+  phoneNotice: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [noticeSeen, setNoticeSeen] = useState(false);
   const view = snap.view;
   if (!view) return null;
   const players = snap.lobby.players;
@@ -34,7 +40,9 @@ export function HostBoard({
         </span>
         <span className="actions">
           <span className="chip live">
-            Broadcasting to {online} {online === 1 ? 'player' : 'players'}
+            {snap.lobby.musicInRoom ? '' : 'Broadcasting to '}
+            {online} {online === 1 ? 'player' : 'players'}
+            {snap.lobby.musicInRoom ? ' connected' : ''}
           </span>
           <PauseButton view={view} act={act} />
           {view.phase === 'deciding' && (
@@ -57,8 +65,16 @@ export function HostBoard({
       {snap.musicError && (
         <div className="panel" role="alert">
           <p className="error">Music stopped: {snap.musicError}</p>
-          <button type="button" className="btn small" onClick={() => session.retryMusic()}>
+          <button type="button" className="btn small" onClick={onRetryMusic}>
             Try again
+          </button>
+        </div>
+      )}
+      {phoneNotice && !noticeSeen && (
+        <div className="panel notice row">
+          <p>Keep TUBESTER open in front: switching apps pauses the game for everyone.</p>
+          <button type="button" className="btn small" onClick={() => setNoticeSeen(true)}>
+            OK
           </button>
         </div>
       )}
@@ -88,6 +104,7 @@ export function HostBoard({
             stealWindowMs={snap.lobby.settings.stealWindowSec * 1000}
             error={error}
             act={act}
+            musicInRoom={snap.lobby.musicInRoom}
           />
           <section className="panel rows">
             <h2>Players</h2>

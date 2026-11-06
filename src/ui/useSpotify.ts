@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ReviewRow, toReviewRows } from '../host/review';
-import { SpotifyApi } from '../music/spotify/api';
+import { SpotifyApi, type SpotifyDevice } from '../music/spotify/api';
 import { NotLoggedInError, SESSION_EXPIRED, SpotifyAuth } from '../music/spotify/auth';
+import { type ConnectDevice, SpotifyConnectSource } from '../music/spotify/connect';
 import { createSpotifyPlayer } from '../music/spotify/sdk';
 import { SpotifyMusicSource } from '../music/spotify/source';
 import type { PlaylistSummary } from '../music/types';
@@ -29,8 +30,13 @@ export interface SpotifyState {
   playlists: PlaylistSummary[] | null;
   progress: { done: number; total: number } | null;
   rows: ReviewRow[];
+  /** The in-tab player, only when the music is streamed to the phones. */
   source: SpotifyMusicSource | null;
   playerReady: boolean;
+  /** Plays on the picked Connect device, for games in one room. */
+  connectSource: SpotifyConnectSource | null;
+  devices: SpotifyDevice[] | null;
+  refreshDevices(): void;
   error: string | null;
   login(): void;
   logout(): void;
@@ -38,7 +44,7 @@ export interface SpotifyState {
   setRows(rows: ReviewRow[]): void;
 }
 
-export function useSpotify(): SpotifyState {
+export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device: ConnectDevice | null }): SpotifyState {
   const deps = useMemo(() => {
     const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
     if (!clientId) return null;
@@ -56,6 +62,9 @@ export function useSpotify(): SpotifyState {
   const [rows, setRowsState] = useState<ReviewRow[]>(loadRows);
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devices, setDevices] = useState<SpotifyDevice[] | null>(null);
+  const deviceRef = useRef(device);
+  deviceRef.current = device;
 
   /** Any error; a revoked session also flips the UI back to "logged out". */
   const fail = useCallback((e: unknown) => {
@@ -67,9 +76,20 @@ export function useSpotify(): SpotifyState {
   }, []);
 
   const source = useMemo(
-    () => (deps && loggedIn ? new SpotifyMusicSource(deps.api, () => createSpotifyPlayer(deps.auth)) : null),
+    () => (deps && loggedIn && wantPlayer ? new SpotifyMusicSource(deps.api, () => createSpotifyPlayer(deps.auth)) : null),
+    [deps, loggedIn, wantPlayer],
+  );
+
+  const connectSource = useMemo(
+    () => (deps && loggedIn ? new SpotifyConnectSource(deps.api, () => deviceRef.current) : null),
     [deps, loggedIn],
   );
+
+  const refreshDevices = useCallback(() => {
+    if (!deps || !loggedIn) return;
+    setError(null);
+    deps.api.devices().then(setDevices, fail);
+  }, [deps, loggedIn, fail]);
 
   useEffect(() => {
     if (!deps || !window.location.search) return;
@@ -138,6 +158,7 @@ export function useSpotify(): SpotifyState {
     deps?.auth.logout();
     setLoggedIn(false);
     setPlaylists(null);
+    setDevices(null);
   }, [deps]);
 
   return {
@@ -148,6 +169,9 @@ export function useSpotify(): SpotifyState {
     rows,
     source,
     playerReady,
+    connectSource,
+    devices,
+    refreshDevices,
     error,
     login,
     logout,

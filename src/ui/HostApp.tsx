@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { captureTabAudio, type TabAudio } from '../host/broadcast';
 import { gameTracks } from '../host/review';
 import { HostSession, type HostSnapshot } from '../host/session';
 import { DEMO_TRACKS } from '../music/demo';
 import { FakeMusicSource } from '../music/fake';
 import { MusicRouter } from '../music/router';
+import type { ConnectDevice } from '../music/spotify/connect';
 import { createToneFeed, type ToneFeed } from '../music/tone';
 import { createHostTransport } from '../net/peer';
 import { newRoomCode } from '../net/room';
@@ -15,10 +16,32 @@ import { HostBoard } from './HostBoard';
 import { HostLobby } from './HostLobby';
 import { HOST_ID_KEY, NAME_KEY, ROOM_KEY } from './keys';
 import { type BroadcastState, type MusicMode, MusicPanel } from './MusicPanel';
+import {
+  audioTrackFor,
+  browserEnv,
+  canStream,
+  DEVICE_KEY,
+  defaultWhere,
+  demoAllowed,
+  demoFlag,
+  effectiveSource,
+  shouldAutoPause,
+  WHERE_KEY,
+  type Where,
+} from './musicMode';
 import { useSpotify } from './useSpotify';
 import { YearReview } from './YearReview';
 
 const MODE_KEY = 'tubester.music';
+
+function readDevice(): ConnectDevice | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(DEVICE_KEY) ?? 'null') as Partial<ConnectDevice> | null;
+    return d && typeof d.id === 'string' && typeof d.name === 'string' ? { id: d.id, name: d.name } : null;
+  } catch {
+    return null;
+  }
+}
 
 function hostId(): string {
   let id = localStorage.getItem(HOST_ID_KEY);
@@ -30,15 +53,18 @@ function hostId(): string {
 }
 
 export function HostApp() {
-  const spotify = useSpotify();
+  const env = useMemo(browserEnv, []);
+  const streamable = canStream(env);
+  const [where, setWhereState] = useState<Where>(() => defaultWhere(env, localStorage.getItem(WHERE_KEY)));
+  const [device, setDeviceState] = useState<ConnectDevice | null>(readDevice);
+  const spotify = useSpotify({ wantPlayer: where === 'stream', device });
+  const demoOpts = { flag: demoFlag(), spotifyAvailable: spotify.available };
   const [code] = useState(() => {
     const c = localStorage.getItem(ROOM_KEY) ?? newRoomCode();
     localStorage.setItem(ROOM_KEY, c);
     return c;
   });
-  const [mode, setModeState] = useState<MusicMode>(() =>
-    spotify.available && localStorage.getItem(MODE_KEY) === 'spotify' ? 'spotify' : 'demo',
-  );
+  const [mode, setModeState] = useState<MusicMode>(() => effectiveSource(localStorage.getItem(MODE_KEY), demoOpts));
   const [snap, setSnap] = useState<HostSnapshot | null>(null);
   const [status, setStatus] = useState<'opening' | 'ready' | 'error'>('opening');
   const [soundBlocked, setSoundBlocked] = useState(false);
@@ -104,14 +130,77 @@ export function HostApp() {
     const feed = feedRef.current;
     const demo = demoRef.current;
     if (status !== 'ready' || !router || !transport || !feed || !demo) return;
-    if (mode === 'demo') {
-      router.use(demo);
-      transport.setAudioTrack(feed.track);
-      return;
-    }
-    if (spotify.source) router.use(spotify.source);
-    transport.setAudioTrack(captureRef.current?.track ?? null);
-  }, [status, mode, spotify.source]);
+    if (mode === 'demo') router.use(demo);
+    else if (where === 'room') {
+      if (spotify.connectSource) router.use(spotify.connectSource);
+    } else if (spotify.source) router.use(spotify.source);
+    transport.setAudioTrack(audioTrackFor(where, mode, { feed: feed.track, capture: captureRef.current?.track ?? null }));
+  }, [status, mode, where, spotify.source, spotify.connectSource]);
+
+  // Guests learn whether the music is in the room (ignored once a game runs).
+  useEffect(() => {
+    if (status === 'ready') sessionRef.current?.setMusicInRoom(where === 'room');
+  }, [status, where]);
+
+  const inGame = !!snap?.view && snap.view.phase !== 'finished';
+
+  // Keep the host's screen on during a game: a locked screen pauses the tab.
+  useEffect(() => {
+    if (!inGame) return;
+    let lock: WakeLockSentinel | null = null;
+    let done = false;
+    const request = () => {
+      if (document.visibilityState !== 'visible') return;
+      navigator.wakeLock?.request('screen').then(
+        (l) => {
+          if (done) void l.release();
+          else lock = l;
+        },
+        () => undefined,
+      );
+    };
+    request();
+    document.addEventListener('visibilitychange', request);
+    return () => {
+      done = true;
+      document.removeEventListener('visibilitychange', request);
+      void lock?.release();
+    };
+  }, [inGame]);
+
+  // In the room, the game pauses itself when the host's tab goes to the background.
+  const latest = useRef({ where, snap });
+  latest.current = { where, snap };
+  useEffect(() => {
+    const onVisibility = () => {
+      const view = latest.current.snap?.view ?? null;
+      const pause = shouldAutoPause({
+        hidden: document.visibilityState === 'hidden',
+        inRoom: latest.current.where === 'room',
+        phase: view?.phase ?? null,
+        paused: !!view?.paused,
+      });
+      if (pause) sessionRef.current?.act({ type: 'pause' });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  function setWhere(next: Where) {
+    localStorage.setItem(WHERE_KEY, next);
+    setWhereState(next);
+  }
+
+  function setDevice(next: ConnectDevice | null) {
+    if (next) localStorage.setItem(DEVICE_KEY, JSON.stringify(next));
+    else localStorage.removeItem(DEVICE_KEY);
+    setDeviceState(next);
+  }
+
+  function retryMusic() {
+    if (where === 'room' && mode === 'spotify') spotify.refreshDevices();
+    sessionRef.current?.retryMusic();
+  }
 
   function setMode(next: MusicMode) {
     localStorage.setItem(MODE_KEY, next);
@@ -156,8 +245,11 @@ export function HostApp() {
 
   const session = sessionRef.current;
   const tracks = mode === 'demo' ? DEMO_TRACKS : gameTracks(spotify.rows);
-  const musicReady = mode === 'demo' || (broadcast === 'on' && spotify.playerReady && tracks.length > 0);
-  const needsBroadcast = mode === 'spotify' && broadcast !== 'on' && !!snap?.view;
+  const musicReady =
+    mode === 'demo' ||
+    (tracks.length > 0 &&
+      (where === 'room' ? spotify.loggedIn && device !== null : broadcast === 'on' && spotify.playerReady));
+  const needsBroadcast = mode === 'spotify' && where === 'stream' && broadcast !== 'on' && !!snap?.view;
 
   return (
     <main className="screen wide">
@@ -190,7 +282,13 @@ export function HostApp() {
           </p>
         </>
       )}
-      {status === 'ready' && session && snap?.view && <HostBoard code={code} snap={snap} session={session} />}
+      {status === 'ready' && session && snap?.view && <HostBoard
+          code={code}
+          snap={snap}
+          session={session}
+          onRetryMusic={retryMusic}
+          phoneNotice={where === 'room' && !streamable}
+        />}
       {status === 'ready' && session && snap && !snap.view && reviewing && (
         <YearReview rows={spotify.rows} onChange={spotify.setRows} onDone={() => setReviewing(false)} />
       )}
@@ -204,6 +302,12 @@ export function HostApp() {
           tracks={tracks}
           music={
             <MusicPanel
+              where={where}
+              setWhere={setWhere}
+              streamable={streamable}
+              showDemo={demoAllowed(demoOpts)}
+              device={device}
+              setDevice={setDevice}
               mode={mode}
               setMode={setMode}
               spotify={spotify}

@@ -277,6 +277,32 @@ describe('HostSession game', () => {
     expect(b.join('p1', 'Léa', 'sec').last()?.t).toBe('state');
   });
 
+  it('tells guests the music is in the room and keeps it after a reload', () => {
+    const storage = memoryStorage();
+    const a = setup(storage);
+    const lea = a.join('p1', 'Léa', 'sec');
+    a.session.setMusicInRoom(true);
+    expect(lea.last()).toEqual({ t: 'lobby', lobby: expect.objectContaining({ musicInRoom: true }) });
+    a.session.startGame(TRACKS);
+    a.session.dispose();
+    const b = setup(storage);
+    expect(b.session.snapshot().lobby.musicInRoom).toBe(true);
+  });
+
+  it('restores an older save without the room flag as streamed music', () => {
+    const storage = memoryStorage();
+    const a = setup(storage);
+    a.join('p1', 'Léa', 'sec');
+    a.session.startGame(TRACKS);
+    a.session.dispose();
+    const saved = JSON.parse(storage.getItem(SAVE_KEY) ?? '{}');
+    delete saved.lobby.musicInRoom;
+    storage.setItem(SAVE_KEY, JSON.stringify(saved));
+    const b = setup(storage);
+    expect(b.session.snapshot().view).not.toBeNull();
+    expect(b.session.snapshot().lobby.musicInRoom).toBe(false);
+  });
+
   it('ignores a corrupt save', () => {
     const storage = memoryStorage();
     storage.setItem(SAVE_KEY, '{"v":1,"runtime":"nope"}');
