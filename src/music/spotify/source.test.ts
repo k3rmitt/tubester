@@ -67,6 +67,15 @@ describe('SpotifyMusicSource', () => {
     expect(errors).toEqual([{ trackId: 't1', message: 'Spotify player is not responding' }]);
   });
 
+  it('exposes its Connect device id once ready (to hide it from the room device list)', async () => {
+    const p = fakePlayer();
+    const src = new SpotifyMusicSource(fakeApi().api, async () => p.player);
+    await src.connect();
+    expect(src.deviceIdNow).toBeNull();
+    p.emit('ready', { device_id: 'dev1' });
+    expect(src.deviceIdNow).toBe('dev1');
+  });
+
   it('waits for the device before playing', async () => {
     const p = fakePlayer();
     const { api, calls } = fakeApi();

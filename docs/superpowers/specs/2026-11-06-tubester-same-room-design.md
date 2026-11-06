@@ -45,6 +45,7 @@ Default: **In the room** on phones and tablets, and on desktop browsers that can
 
 Steps after "Log in with Spotify", playlist import and year review (unchanged):
 
+- **This computer** (added after first test): on a desktop browser, the list starts with **This computer**, preselected. It uses the Spotify player inside the TUBESTER tab, so the music plays from the computer's speakers: no device to find, nothing to share. The tab's own Connect device ("TUBESTER") is hidden from the list. The in-tab player is unlocked on the Start game / Try again tap and when This computer is picked. Phones and tablets don't get this option.
 - **Play on:** a select listing the account's Spotify Connect devices (`GET /me/player/devices`), by name and type ("Hervé's iPhone · Smartphone"). A **Refresh** button re-reads the list.
 - Help text under it: "Don't see your device? Open the Spotify app on it, play anything for a second, then tap Refresh."
 - If the list is empty: the same help text, shown as the main message.
@@ -54,7 +55,7 @@ Steps after "Log in with Spotify", playlist import and year review (unchanged):
 
 The device list is read when this panel appears and on **Refresh**; there is no extra check when the game starts — a stale device is handled by the in-game recovery below.
 
-The login asks for one more Spotify permission, `user-read-playback-state` (needed to list devices). Existing logins lack it: if listing devices returns 401/403 for scope, show "Log in to Spotify again to see your devices" with a log-in button. The mode, music source, imported playlist and year review are already in localStorage, so they survive the login redirect.
+The login asks for one more Spotify permission, `user-read-playback-state` (needed to list devices). Existing logins lack it: if listing devices returns 401 ("Permissions missing", seen in testing) or 403, show "Log in to Spotify again to see your devices" with a log-in button. The mode, music source, imported playlist and year review are already in localStorage, so they survive the login redirect.
 
 In this mode the Web Playback SDK player is **not** started, so it can't fail on phones. (In on-everyone's-phone mode it starts as today.)
 

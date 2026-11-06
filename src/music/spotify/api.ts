@@ -113,8 +113,10 @@ export class SpotifyApi {
   /** Spotify Connect devices of this account that TUBESTER can control. */
   async devices(): Promise<SpotifyDevice[]> {
     const body = (await this.request('GET', '/me/player/devices').catch((e) => {
-      // Logins from before the device permission was added get 403.
-      throw is403(e) ? new Error(NEEDS_RELOGIN) : e;
+      // Logins from before the device permission was added get 401 "Permissions missing" (or 403),
+      // even after a token refresh: only a new login grants the permission.
+      const denied = e instanceof HttpError && (e.status === 401 || e.status === 403);
+      throw denied ? new Error(NEEDS_RELOGIN) : e;
     })) as { devices?: ApiDevice[] } | null;
     const out: SpotifyDevice[] = [];
     for (const d of body?.devices ?? []) {

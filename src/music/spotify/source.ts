@@ -34,6 +34,11 @@ export class SpotifyMusicSource implements MusicSource {
     private readonly readyTimeoutMs = 10_000,
   ) {}
 
+  /** This tab's Spotify Connect device id, once the player is ready. */
+  get deviceIdNow(): string | null {
+    return this.deviceId;
+  }
+
   async connect(): Promise<void> {
     const player = await this.createPlayer();
     if (this.disposed) {

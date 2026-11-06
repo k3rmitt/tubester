@@ -12,6 +12,7 @@ export function HostLobby({
   onClose,
   music,
   musicReady,
+  onStart,
   tracks,
 }: {
   code: string;
@@ -20,6 +21,8 @@ export function HostLobby({
   onClose: () => void;
   music: ReactNode;
   musicReady: boolean;
+  /** Runs inside the Start game tap, before the game starts (unlocks audio). */
+  onStart?: () => void;
   tracks: GameTrack[];
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,7 @@ export function HostLobby({
   const teamsReady = canStart(lobby);
 
   function start() {
+    onStart?.();
     const r = session.startGame(tracks);
     setError(r.ok ? null : r.reason);
   }

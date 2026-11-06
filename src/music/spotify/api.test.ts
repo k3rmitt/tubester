@@ -176,6 +176,14 @@ describe('SpotifyApi Connect devices', () => {
     expect(calls[0].url).toBe('https://api.spotify.com/v1/me/player/devices');
   });
 
+  it('asks for a new login when Spotify answers 401 Permissions missing (even after a token refresh)', async () => {
+    const { api } = setup([
+      { status: 401, body: { error: { message: 'Permissions missing' } } },
+      { status: 401, body: { error: { message: 'Permissions missing' } } },
+    ]);
+    await expect(api.devices()).rejects.toThrow('Log in to Spotify again to see your devices');
+  });
+
   it('asks for a new login when the device permission is missing', async () => {
     const { api } = setup([{ status: 403, body: { error: { message: 'Insufficient client scope' } } }]);
     await expect(api.devices()).rejects.toThrow('Log in to Spotify again to see your devices');
