@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { audioTrackFor, canStream, initialDevice, isLocalDevice, LOCAL_DEVICE, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
+import { audioTrackFor, canStream, devicesFoundText, initialDevice, isLocalDevice, LOCAL_DEVICE, type DeviceEnv, defaultWhere, demoAllowed, effectiveSource, readDemoFlag, shouldAutoPause } from './musicMode';
 
 const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1';
@@ -125,5 +125,13 @@ describe('This computer as the room device', () => {
     expect(isLocalDevice(LOCAL_DEVICE)).toBe(true);
     expect(isLocalDevice({ id: 'd1', name: 'Kitchen' })).toBe(false);
     expect(isLocalDevice(null)).toBe(false);
+  });
+});
+
+describe('devicesFoundText', () => {
+  it('says how many devices the refresh found', () => {
+    expect(devicesFoundText(0)).toBe('No devices found');
+    expect(devicesFoundText(1)).toBe('Found 1 device');
+    expect(devicesFoundText(3)).toBe('Found 3 devices');
   });
 });

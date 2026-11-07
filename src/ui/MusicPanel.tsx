@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { reviewSummary } from '../host/review';
 import { DEMO_TRACKS } from '../music/demo';
-import { NEEDS_RELOGIN } from '../music/spotify/api';
+import { NEEDS_RELOGIN, type SpotifyDevice } from '../music/spotify/api';
 import type { ConnectDevice } from '../music/spotify/connect';
-import { isLocalDevice, LOCAL_DEVICE, type Where } from './musicMode';
+import { devicesFoundText, isLocalDevice, LOCAL_DEVICE, type Where } from './musicMode';
 import type { SpotifyState } from './useSpotify';
 
 export type MusicMode = 'demo' | 'spotify';
@@ -203,12 +203,28 @@ function DevicePicker({
 }) {
   const { refreshDevices } = spotify;
   const local = isLocalDevice(device);
+  const [refreshing, setRefreshing] = useState(false);
+  const [found, setFound] = useState<string | null>(null);
   useEffect(() => {
-    if (!local) refreshDevices();
+    if (!local) void refreshDevices();
   }, [refreshDevices, local]);
+  useEffect(() => {
+    if (!found) return;
+    const t = setTimeout(() => setFound(null), 4000);
+    return () => clearTimeout(t);
+  }, [found]);
   // Our own tab shows up as a Connect device too ("TUBESTER"): This computer already covers it.
   const tabId = spotify.source?.deviceIdNow ?? null;
-  const devices = spotify.devices?.filter((d) => d.id !== tabId && d.name !== 'TUBESTER') ?? null;
+  const others = (list: SpotifyDevice[]) => list.filter((d) => d.id !== tabId && d.name !== 'TUBESTER');
+  const devices = spotify.devices ? others(spotify.devices) : null;
+
+  async function refresh() {
+    setRefreshing(true);
+    setFound(null);
+    const list = await refreshDevices();
+    setRefreshing(false);
+    if (list) setFound(devicesFoundText(others(list).length));
+  }
   const listed = local || (devices?.some((d) => d.id === device?.id) ?? false);
   return (
     <>
@@ -239,10 +255,16 @@ function DevicePicker({
             ))}
           </select>
         </label>
-        <button type="button" className="btn small" onClick={refreshDevices}>
-          Refresh
+        <button type="button" className="btn small" onClick={() => void refresh()} disabled={refreshing} aria-busy={refreshing}>
+          {refreshing && <span className="spinner" aria-hidden="true" />}
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
+      {found && (
+        <p className="muted found-note" role="status">
+          {found}
+        </p>
+      )}
       {local ? (
         <p className="muted">
           The music plays from this computer's speakers. Keep this tab open.

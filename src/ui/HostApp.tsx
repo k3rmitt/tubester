@@ -209,7 +209,7 @@ export function HostApp() {
 
   function retryMusic() {
     unlockLocalPlayer();
-    if (where === 'room' && mode === 'spotify' && !isLocalDevice(device)) spotify.refreshDevices();
+    if (where === 'room' && mode === 'spotify' && !isLocalDevice(device)) void spotify.refreshDevices();
     sessionRef.current?.retryMusic();
   }
 

@@ -24,6 +24,25 @@ body { min-height: 100dvh; overflow-x: hidden; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.45; }
+/* Click feedback: every button reacts while pressed (and on hover with a mouse). */
+button { -webkit-tap-highlight-color: transparent; transition: transform 90ms ease-out, filter 90ms ease-out, background-color 120ms ease-out; }
+button:not(:disabled):active { transform: scale(0.96); filter: brightness(0.82); }
+/* Outlined buttons have no fill to darken: give them a visible pressed fill. */
+.btn:not(.primary):not(.tubester):not(.danger):not(:disabled):active,
+.slot:not(:disabled):active { background-color: rgba(255, 255, 255, 0.14); border-color: var(--text); }
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover { filter: brightness(1.12); }
+  .btn:not(.primary):not(.tubester):not(:disabled):hover { background-color: rgba(255, 255, 255, 0.06); }
+  button:not(:disabled):active { filter: brightness(0.82); }
+}
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active { transform: none; }
+}
+.spinner { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
+button[aria-busy='true']:disabled { opacity: 0.8; cursor: progress; }
+.found-note { margin-top: -4px; }
 h1, h2 { font-family: var(--display); margin: 0; font-size: 17px; }
 p { margin: 0; }
 .screen { max-width: 480px; margin: 0 auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100dvh; }
@@ -292,6 +311,6 @@ select.input { appearance: none; -webkit-appearance: none; padding-right: 36px; 
 .warn-note { color: var(--steal); }
 .device-row { display: flex; gap: 8px; align-items: flex-end; }
 .device-row .field { flex: 1; min-width: 0; }
-.device-row .btn { flex: none; }
+.device-row .btn { flex: none; min-width: 132px; } /* room for "Refreshing…" so the row doesn't jump */
 .panel.notice { gap: 12px; }
 .panel.notice p { margin: 0; flex: 1; min-width: 0; }
