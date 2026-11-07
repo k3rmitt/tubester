@@ -40,7 +40,8 @@ export interface SpotifyState {
   /** Plays on the picked Connect device, for games in one room. */
   connectSource: SpotifyConnectSource | null;
   devices: SpotifyDevice[] | null;
-  refreshDevices(): void;
+  /** Re-reads the Connect devices; resolves with the list, or null when it failed (the error is shown). */
+  refreshDevices(): Promise<SpotifyDevice[] | null>;
   error: string | null;
   login(): void;
   logout(): void;
@@ -107,12 +108,19 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
   }, [connectSource, deps, fail]);
 
   const refreshDevices = useCallback(() => {
-    if (!deps || !loggedIn || refusedRef.current) return;
-    deps.api.devices().then((list) => {
-      setDevices(list);
-      // Only clear the device list's own message: a playlist error must stay visible.
-      setError((e) => (e === NEEDS_RELOGIN ? null : e));
-    }, fail);
+    if (!deps || !loggedIn || refusedRef.current) return Promise.resolve(null);
+    return deps.api.devices().then(
+      (list) => {
+        setDevices(list);
+        // Only clear the device list's own message: a playlist error must stay visible.
+        setError((e) => (e === NEEDS_RELOGIN ? null : e));
+        return list;
+      },
+      (e) => {
+        fail(e);
+        return null;
+      },
+    );
   }, [deps, loggedIn, fail]);
 
   useEffect(() => {

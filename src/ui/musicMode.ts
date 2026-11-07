@@ -109,3 +109,9 @@ export function initialDevice(
   if (stored && (canPlayHere || !isLocalDevice(stored))) return stored;
   return canPlayHere ? { ...LOCAL_DEVICE } : null;
 }
+
+/** The line shown under the device list after Refresh, even when the list didn't change. */
+export function devicesFoundText(count: number): string {
+  if (count === 0) return 'No devices found';
+  return `Found ${count} ${count === 1 ? 'device' : 'devices'}`;
+}
