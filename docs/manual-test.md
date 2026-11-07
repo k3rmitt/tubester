@@ -19,7 +19,8 @@ Run before announcing a release. Host: a Premium account allowlisted in the Spot
 - [ ] Leave the Spotify app idle for a while, then start a turn → the device wakes and plays (no "Music stopped").
 - [ ] Close the Spotify app mid-game → after a few skips "Music stopped: Can't reach ⟨device⟩…" → reopen Spotify → **Try again** plays again.
 - [ ] Host on a phone switches to another app mid-turn → the game is paused for everyone ("Paused by ⟨host⟩"); back in TUBESTER, **Resume** works.
-- [ ] Log in with a Spotify account that isn't allowlisted → "This Spotify account can't host yet. Ask the TUBESTER owner to add it."
+- [ ] **Log in with Spotify** always shows Spotify's page with the account name ("Not you?"), even when already authorized.
+- [ ] Log in with a Spotify account that isn't allowlisted → "Spotify refused this account (⟨Spotify's reason⟩)…" stays on screen; playlists say "Couldn't load playlists"; **Log out of Spotify** then logging in with the allowlisted account works.
 - [ ] Without `?demo` in the address, the Music panel has no Demo tones choice.
 
 ## Guests

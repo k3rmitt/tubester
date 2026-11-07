@@ -42,7 +42,14 @@ export function pickCover(images: { url?: string; width?: number | null }[] | un
 }
 
 export const NEEDS_RELOGIN = 'Log in to Spotify again to see your devices';
-export const NOT_ALLOWED = "This Spotify account can't host yet. Ask the TUBESTER owner to add it.";
+/** Spotify refuses the logged-in account (development mode: not on the app's allowlist, or no Premium). */
+export class AccountRefusedError extends Error {
+  constructor(spotifyMessage: string) {
+    super(
+      `Spotify refused this account (${spotifyMessage}). Log out and log in with the account the TUBESTER owner added, or ask them to add this one.`,
+    );
+  }
+}
 
 export interface SpotifyDevice {
   id: string;
@@ -70,7 +77,7 @@ export class SpotifyApi {
   async me(): Promise<{ id: string }> {
     const body = (await this.request('GET', '/me').catch((e) => {
       // Development mode: accounts not on the app's allowlist get 403.
-      throw is403(e) ? new Error(NOT_ALLOWED) : e;
+      throw is403(e) ? new AccountRefusedError((e as Error).message) : e;
     })) as { id?: string } | null;
     if (!body?.id) throw new Error('Spotify returned no user id');
     return { id: body.id };

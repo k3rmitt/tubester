@@ -145,7 +145,13 @@ function SpotifySteps({
       <label className="field">
         Playlist
         <select className="input" value={picked} onChange={(e) => setPicked(e.target.value)}>
-          <option value="">{spotify.playlists ? 'Pick one of your playlists' : 'Loading playlists…'}</option>
+          <option value="">
+            {spotify.playlists
+              ? 'Pick one of your playlists'
+              : spotify.playlistsFailed
+                ? "Couldn't load playlists"
+                : 'Loading playlists…'}
+          </option>
           {spotify.playlists?.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} ({p.trackCount})
@@ -228,7 +234,9 @@ function DevicePicker({
               setDevice(d ? { id: d.id, name: d.name } : null);
             }}
           >
-            <option value="">{devices || local ? 'Pick a Spotify device' : 'Looking for devices…'}</option>
+            <option value="">
+              {devices || local || spotify.refused ? 'Pick a Spotify device' : 'Looking for devices…'}
+            </option>
             {canPlayHere && <option value={LOCAL_DEVICE.id}>This computer</option>}
             {device && !listed && <option value={device.id}>{device.name} (not seen right now)</option>}
             {devices?.map((d) => (

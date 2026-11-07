@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HttpError, scriptedFetch } from '../../util/http';
-import { pickCover, SpotifyApi } from './api';
+import { AccountRefusedError, pickCover, SpotifyApi } from './api';
 
 function setup(responses: { status: number; body?: unknown }[]) {
   const { fetchFn, calls } = scriptedFetch(responses);
@@ -199,6 +199,10 @@ describe('SpotifyApi Connect devices', () => {
 
   it('explains when the account is not allowed to use the app', async () => {
     const { api } = setup([{ status: 403, body: { error: { message: 'User not registered in the Developer Dashboard' } } }]);
-    await expect(api.listPlaylists()).rejects.toThrow("This Spotify account can't host yet. Ask the TUBESTER owner to add it.");
+    const err = await api.listPlaylists().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AccountRefusedError);
+    expect((err as Error).message).toBe(
+      "Spotify refused this account (User not registered in the Developer Dashboard). Log out and log in with the account the TUBESTER owner added, or ask them to add this one.",
+    );
   });
 });

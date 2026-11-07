@@ -34,6 +34,7 @@ export function authorizeUrl(p: { clientId: string; redirectUri: string; challen
     code_challenge: p.challenge,
     scope: SPOTIFY_SCOPES.join(' '),
     state: p.state,
+    show_dialog: 'true',
   });
   return `https://accounts.spotify.com/authorize?${q}`;
 }
