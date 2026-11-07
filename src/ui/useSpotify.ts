@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ReviewRow, toReviewRows } from '../host/review';
-import { NEEDS_RELOGIN, SpotifyApi, type SpotifyDevice } from '../music/spotify/api';
+import { AccountRefusedError, NEEDS_RELOGIN, SpotifyApi, type SpotifyDevice } from '../music/spotify/api';
 import { NotLoggedInError, SESSION_EXPIRED, SpotifyAuth } from '../music/spotify/auth';
 import { type ConnectDevice, SpotifyConnectSource } from '../music/spotify/connect';
 import { createSpotifyPlayer } from '../music/spotify/sdk';
@@ -28,6 +28,10 @@ export interface SpotifyState {
   available: boolean;
   loggedIn: boolean;
   playlists: PlaylistSummary[] | null;
+  /** Loading the playlists failed (the reason is in `error`). */
+  playlistsFailed: boolean;
+  /** Spotify refuses this account: nothing else will work until another account logs in. */
+  refused: boolean;
   progress: { done: number; total: number } | null;
   rows: ReviewRow[];
   /** The in-tab player, only when the music is streamed to the phones. */
@@ -64,6 +68,13 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devices, setDevices] = useState<SpotifyDevice[] | null>(null);
+  const [playlistsFailed, setPlaylistsFailed] = useState(false);
+  const [refused, setRefusedState] = useState(false);
+  const refusedRef = useRef(false);
+  const setRefused = useCallback((on: boolean) => {
+    refusedRef.current = on;
+    setRefusedState(on);
+  }, []);
   const deviceRef = useRef(device);
   deviceRef.current = device;
 
@@ -73,8 +84,11 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
       setLoggedIn(false);
       setPlaylists(null);
     }
+    if (e instanceof AccountRefusedError) setRefused(true);
+    // A refused account explains every other failure: keep that message on screen.
+    else if (refusedRef.current) return;
     setError(messageOf(e));
-  }, []);
+  }, [setRefused]);
 
   const source = useMemo(
     () => (deps && loggedIn && wantPlayer ? new SpotifyMusicSource(deps.api, () => createSpotifyPlayer(deps.auth)) : null),
@@ -94,7 +108,7 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
   }, [connectSource, deps, fail]);
 
   const refreshDevices = useCallback(() => {
-    if (!deps || !loggedIn) return Promise.resolve(null);
+    if (!deps || !loggedIn || refusedRef.current) return Promise.resolve(null);
     return deps.api.devices().then(
       (list) => {
         setDevices(list);
@@ -124,7 +138,11 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
 
   useEffect(() => {
     if (!deps || !loggedIn) return;
-    deps.api.listPlaylists().then(setPlaylists, fail);
+    setPlaylistsFailed(false);
+    deps.api.listPlaylists().then(setPlaylists, (e) => {
+      setPlaylistsFailed(true);
+      fail(e);
+    });
   }, [deps, loggedIn, fail]);
 
   useEffect(() => {
@@ -178,12 +196,16 @@ export function useSpotify({ wantPlayer, device }: { wantPlayer: boolean; device
     setPlaylists(null);
     setDevices(null);
     setError(null);
-  }, [deps]);
+    setPlaylistsFailed(false);
+    setRefused(false);
+  }, [deps, setRefused]);
 
   return {
     available: deps !== null,
     loggedIn,
     playlists,
+    playlistsFailed,
+    refused,
     progress,
     rows,
     source,

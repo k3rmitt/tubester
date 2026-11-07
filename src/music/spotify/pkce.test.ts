@@ -28,6 +28,8 @@ describe('pkce', () => {
       code_challenge: 'ch',
       scope: SPOTIFY_SCOPES.join(' '),
       state: 'st',
+      // Always show Spotify's page (with "Not you?"): otherwise a phone silently reuses whatever account it knows.
+      show_dialog: 'true',
     });
     expect(SPOTIFY_SCOPES).toContain('streaming');
     expect(SPOTIFY_SCOPES).toContain('user-modify-playback-state');
